@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom"
 import LandingNavbar from "../components/LandingNavbar"
 
 export default function Home() {
@@ -23,12 +24,12 @@ export default function Home() {
 
           <div className="space-x-4">
 
-            <a
-              href="/login"
+            <Link
+              to="/login"
               className="bg-blue-600 text-white px-6 py-3 rounded"
             >
               Get Started
-            </a>
+            </Link>
 
             <a
               href="/register"
