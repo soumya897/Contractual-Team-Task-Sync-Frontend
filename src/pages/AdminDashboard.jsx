@@ -6,6 +6,8 @@ import api from "../services/Api"
 const BellIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>;
 // Added Check Icon for Success Toast
 const CheckIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>;
+// Added Search Icon
+const SearchIcon = () => <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
 
 export default function AdminDashboard() {
 
@@ -36,6 +38,9 @@ export default function AdminDashboard() {
   const [successMessage, setSuccessMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("") // NEW: Error Toast State
 
+  // Search State
+  const [searchQuery, setSearchQuery] = useState("")
+
   const navigate = useNavigate()
 
   /* ================= LOADERS ================= */
@@ -45,20 +50,37 @@ export default function AdminDashboard() {
     setProfile(res.data)
   }
 
-  async function loadProjects() {
-    const res = await api.get("/api/admin/projects")
+  // --- Search Integration ---
+  async function loadProjects(query = "") {
+    const url = query ? `/api/admin/projects?search=${encodeURIComponent(query)}` : "/api/admin/projects"
+    const res = await api.get(url)
     setProjects(res.data)
   }
 
-  async function loadClients() {
-    const res = await api.get("/api/admin/clients")
+  async function loadClients(query = "") {
+    const url = query ? `/api/admin/clients?search=${encodeURIComponent(query)}` : "/api/admin/clients"
+    const res = await api.get(url)
     setClients(res.data)
   }
 
-  async function loadDevelopers() {
-    const res = await api.get("/api/admin/developers")
+  async function loadDevelopers(query = "") {
+    const url = query ? `/api/admin/developers?search=${encodeURIComponent(query)}` : "/api/admin/developers"
+    const res = await api.get(url)
     setDevelopers(res.data)
   }
+
+  // Effect to handle dynamic search as the user types
+  useEffect(() => {
+    // We only load the data relevant to the active tab to save bandwidth
+    if (activeTab === "PROJECTS" || activeTab === "ONGOING" || activeTab === "COMPLETED") {
+      loadProjects(searchQuery)
+    } else if (activeTab === "CLIENTS") {
+      loadClients(searchQuery)
+    } else if (activeTab === "DEVS") {
+      loadDevelopers(searchQuery)
+    }
+  }, [searchQuery, activeTab])
+
 
   // --- Notification Fetcher ---
   async function fetchNotifications() {
@@ -73,7 +95,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function load() {
       setLoading(true)
-
       await Promise.all([
         loadProfile(),
         loadProjects(),
@@ -81,11 +102,17 @@ export default function AdminDashboard() {
         loadDevelopers(),
         fetchNotifications() 
       ])
-
       setLoading(false)
     }
-
     load()
+
+    // --- Background Notification Polling (Every 10 seconds) ---
+    const notificationInterval = setInterval(() => {
+      fetchNotifications()
+    }, 1000000); 
+
+    // Cleanup interval on unmount
+    return () => clearInterval(notificationInterval);
   }, [])
 
   /* ================= HANDLERS ================= */
@@ -179,15 +206,15 @@ export default function AdminDashboard() {
 
         <ul className="flex flex-row md:flex-col gap-2 md:gap-0 md:space-y-2 flex-1 w-full m-0 items-center md:items-stretch">
           <div className="hidden md:block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-2 mt-4">Projects</div>
-          <MenuItem label="All Projects" active={activeTab === "PROJECTS"} onClick={() => setActiveTab("PROJECTS")} />
-          <MenuItem label="Current Projects" active={activeTab === "ONGOING"} onClick={() => setActiveTab("ONGOING")} />
-          <MenuItem label="Completed Projects" active={activeTab === "COMPLETED"} onClick={() => setActiveTab("COMPLETED")} />
+          <MenuItem label="All Projects" active={activeTab === "PROJECTS"} onClick={() => {setActiveTab("PROJECTS"); setSearchQuery("");}} />
+          <MenuItem label="Current Projects" active={activeTab === "ONGOING"} onClick={() => {setActiveTab("ONGOING"); setSearchQuery("");}} />
+          <MenuItem label="Completed Projects" active={activeTab === "COMPLETED"} onClick={() => {setActiveTab("COMPLETED"); setSearchQuery("");}} />
 
           <div className="hidden md:block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-2 mt-8">People</div>
           {/* Subtle divider for mobile to separate projects from people */}
           <div className="w-px h-6 bg-slate-700 mx-1 md:hidden"></div>
-          <MenuItem label="All Clients" active={activeTab === "CLIENTS"} onClick={() => setActiveTab("CLIENTS")} />
-          <MenuItem label="All Developers" active={activeTab === "DEVS"} onClick={() => setActiveTab("DEVS")} />
+          <MenuItem label="All Clients" active={activeTab === "CLIENTS"} onClick={() => {setActiveTab("CLIENTS"); setSearchQuery("");}} />
+          <MenuItem label="All Developers" active={activeTab === "DEVS"} onClick={() => {setActiveTab("DEVS"); setSearchQuery("");}} />
         </ul>
       </div>
 
@@ -195,7 +222,7 @@ export default function AdminDashboard() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden pb-[60px] md:pb-0 w-full">
 
         {/* TOP NAVBAR */}
-        <div className="h-16 sm:h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex justify-between items-center px-4 sm:px-8 shadow-sm shrink-0 z-10 sticky top-0">
+        <div className="h-16 sm:h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex justify-between items-center px-4 sm:px-8 shadow-sm shrink-0 z-10 sticky top-0 gap-4">
           <div className="flex flex-col justify-center min-w-0 pr-4">
             <h1 className="font-bold text-lg sm:text-2xl text-slate-800 tracking-tight truncate">
               {activeTab === "PROJECTS" ? "Dashboard" :
@@ -206,7 +233,21 @@ export default function AdminDashboard() {
             <p className="hidden sm:block text-sm text-slate-500 truncate">Welcome back, {profile?.name?.split(' ')[0] || 'Admin'}</p>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-5 shrink-0">
+          <div className="flex items-center gap-3 sm:gap-5 shrink-0 flex-1 justify-end">
+
+            {/* SEARCH BAR */}
+            <div className="relative max-w-[200px] sm:max-w-xs w-full hidden sm:block">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <SearchIcon />
+              </div>
+              <input
+                type="text"
+                placeholder={`Search ${activeTab.toLowerCase()}...`}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition-colors"
+              />
+            </div>
 
             {/* NOTIFICATION BELL (LIGHT THEME) */}
             <div className="relative">
@@ -284,6 +325,22 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* MOBILE SEARCH BAR (visible only on small screens) */}
+        <div className="sm:hidden px-4 py-3 bg-white border-b border-slate-200 shrink-0">
+          <div className="relative w-full">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <SearchIcon />
+            </div>
+            <input
+              type="text"
+              placeholder={`Search ${activeTab.toLowerCase()}...`}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50 focus:bg-white transition-colors"
+            />
+          </div>
+        </div>
+
         {/* SCROLLABLE CONTENT */}
         <div
           className="p-4 sm:p-8 flex-1 overflow-auto z-0"
@@ -330,7 +387,7 @@ export default function AdminDashboard() {
           {["PROJECTS", "ONGOING", "COMPLETED"].includes(activeTab) && (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6 pb-8">
               {getFilteredProjects().map(p => (
-                <ProjectCard key={p.id} project={p} reload={loadProjects} onEdit={(proj) => { setEditingProject(proj); setShowModal(true); }} onSuccess={showSuccessToast} />
+                <ProjectCard key={p.id} project={p} reload={() => loadProjects(searchQuery)} onEdit={(proj) => { setEditingProject(proj); setShowModal(true); }} onSuccess={showSuccessToast} />
               ))}
               {getFilteredProjects().length === 0 && (
                 <div className="col-span-full text-center py-12 sm:py-16 text-slate-500 bg-white rounded-2xl border-2 border-slate-200 border-dashed px-4">
@@ -346,13 +403,23 @@ export default function AdminDashboard() {
 
           {activeTab === "CLIENTS" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 pb-8">
-              {clients.map(c => <ClientCard key={c.id} client={c} reload={loadClients} onEdit={(client) => { setEditingClient(client); setShowClientModal(true); }} onSuccess={showSuccessToast} />)}
+              {clients.map(c => <ClientCard key={c.id} client={c} reload={() => loadClients(searchQuery)} onEdit={(client) => { setEditingClient(client); setShowClientModal(true); }} onSuccess={showSuccessToast} />)}
+              {clients.length === 0 && (
+                <div className="col-span-full text-center py-12 sm:py-16 text-slate-500 bg-white rounded-2xl border-2 border-slate-200 border-dashed px-4">
+                  <p className="font-medium text-base sm:text-lg text-slate-700">No clients found</p>
+                </div>
+              )}
             </div>
           )}
 
           {activeTab === "DEVS" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 pb-8">
-              {developers.map(d => <DeveloperCard key={d.id} developer={d} reload={loadDevelopers} onEdit={(dev) => { setEditingDeveloper(dev); setShowDevModal(true); }} onSuccess={showSuccessToast} />)}
+              {developers.map(d => <DeveloperCard key={d.id} developer={d} reload={() => loadDevelopers(searchQuery)} onEdit={(dev) => { setEditingDeveloper(dev); setShowDevModal(true); }} onSuccess={showSuccessToast} />)}
+               {developers.length === 0 && (
+                <div className="col-span-full text-center py-12 sm:py-16 text-slate-500 bg-white rounded-2xl border-2 border-slate-200 border-dashed px-4">
+                  <p className="font-medium text-base sm:text-lg text-slate-700">No developers found</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -360,9 +427,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* MODALS */}
-      <ProjectModal show={showModal} onClose={() => setShowModal(false)} reload={loadProjects} clients={clients} developers={developers} editingProject={editingProject} onSuccess={showSuccessToast} />
-      <DeveloperModal show={showDevModal} onClose={() => setShowDevModal(false)} reload={loadDevelopers} editingDeveloper={editingDeveloper} onSuccess={showSuccessToast} />
-      <ClientModal show={showClientModal} onClose={() => setShowClientModal(false)} reload={loadClients} editingClient={editingClient} onSuccess={showSuccessToast} />
+      <ProjectModal show={showModal} onClose={() => setShowModal(false)} reload={() => loadProjects(searchQuery)} clients={clients} developers={developers} editingProject={editingProject} onSuccess={showSuccessToast} />
+      <DeveloperModal show={showDevModal} onClose={() => setShowDevModal(false)} reload={() => loadDevelopers(searchQuery)} editingDeveloper={editingDeveloper} onSuccess={showSuccessToast} />
+      <ClientModal show={showClientModal} onClose={() => setShowClientModal(false)} reload={() => loadClients(searchQuery)} editingClient={editingClient} onSuccess={showSuccessToast} />
 
       <ProfileModal
         show={showProfileModal}
@@ -430,19 +497,27 @@ function ProfileModal({ show, onClose, profile, reload, onSuccess, onError }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-      <div className="bg-white w-full max-w-[400px] p-6 sm:p-8 rounded-2xl shadow-2xl transform transition-all">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-[400px] p-6 sm:p-8 rounded-2xl shadow-2xl transform transition-all animate-in zoom-in-95 duration-200">
         <h2 className="text-xl sm:text-2xl font-bold mb-5 sm:mb-6 text-slate-800">Update Profile</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            name="name" value={form.name} onChange={handleChange} placeholder="Name"
-            className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base"
-          />
-          <input
-            name="phone" value={form.phone} onChange={handleChange} placeholder="Phone"
-            className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base"
-          />
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6 sm:mt-8">
+          <div>
+            <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Full Name</label>
+            <input
+              name="name" value={form.name} onChange={handleChange} placeholder="Name"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Contact Number</label>
+            <input
+              name="phone" value={form.phone} onChange={handleChange} placeholder="Phone"
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base"
+              required
+            />
+          </div>
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6 sm:mt-8 pt-2">
             <button type="button" onClick={onClose}
               className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">
               Cancel
@@ -488,8 +563,8 @@ function ChangePasswordModal({ show, onClose, onSuccess, onError }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-      <div className="bg-white w-full max-w-[400px] p-6 sm:p-8 rounded-2xl shadow-2xl transform transition-all">
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-[400px] p-6 sm:p-8 rounded-2xl shadow-2xl transform transition-all animate-in zoom-in-95 duration-200">
         <h2 className="text-xl sm:text-2xl font-bold mb-5 sm:mb-6 text-slate-800">Change Password</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -510,7 +585,7 @@ function ChangePasswordModal({ show, onClose, onSuccess, onError }) {
               required
             />
           </div>
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6 sm:mt-8">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6 sm:mt-8 pt-2">
             <button type="button" onClick={onClose}
               className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">
               Cancel
@@ -668,11 +743,25 @@ function DeveloperModal({ show, onClose, reload, editingDeveloper, onSuccess }) 
       <div className="bg-white w-full max-w-md p-6 sm:p-8 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl sm:text-2xl font-bold mb-5 sm:mb-6 text-slate-800">{editingDeveloper ? "Edit Developer" : "Add Developer"}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input name="name" value={form.name} onChange={handleChange} placeholder="Full Name" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
-          <input name="email" value={form.email} onChange={handleChange} placeholder="Email Address" type="email" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
-          <input name="ph" value={form.ph} onChange={handleChange} placeholder="Phone Number" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
-          {!editingDeveloper && <input name="password" value={form.password} onChange={handleChange} placeholder="Assign Password" type="password" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />}
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 sm:pt-6">
+          <div>
+            <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Full Name</label>
+            <input name="name" value={form.name} onChange={handleChange} placeholder="Full Name" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
+          </div>
+          <div>
+            <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Email Address</label>
+            <input name="email" value={form.email} onChange={handleChange} placeholder="Email Address" type="email" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
+          </div>
+          <div>
+            <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Phone Number</label>
+            <input name="ph" value={form.ph} onChange={handleChange} placeholder="Phone Number" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
+          </div>
+          {!editingDeveloper && (
+            <div>
+              <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Assign Password</label>
+              <input name="password" value={form.password} onChange={handleChange} placeholder="Assign Password" type="password" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
+            </div>
+          )}
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 sm:pt-6 border-t border-slate-100">
             <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">Cancel</button>
             <button type="submit" className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 transition">Save Developer</button>
           </div>
@@ -714,11 +803,25 @@ function ClientModal({ show, onClose, reload, editingClient, onSuccess }) {
       <div className="bg-white w-full max-w-md p-6 sm:p-8 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         <h3 className="text-xl sm:text-2xl font-bold mb-5 sm:mb-6 text-slate-800">{editingClient ? "Edit Client" : "Add Client"}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <input name="name" value={form.name} onChange={handleChange} placeholder="Client Name / Company" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
-          <input name="email" value={form.email} onChange={handleChange} placeholder="Email Address" type="email" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
-          <input name="ph" value={form.ph} onChange={handleChange} placeholder="Phone Number" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
-          {!editingClient && <input name="password" value={form.password} onChange={handleChange} placeholder="Assign Password" type="password" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />}
-          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 sm:pt-6">
+          <div>
+            <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Client Name / Company</label>
+            <input name="name" value={form.name} onChange={handleChange} placeholder="Client Name / Company" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
+          </div>
+          <div>
+            <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Email Address</label>
+            <input name="email" value={form.email} onChange={handleChange} placeholder="Email Address" type="email" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
+          </div>
+          <div>
+            <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Phone Number</label>
+            <input name="ph" value={form.ph} onChange={handleChange} placeholder="Phone Number" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
+          </div>
+          {!editingClient && (
+            <div>
+              <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Assign Password</label>
+              <input name="password" value={form.password} onChange={handleChange} placeholder="Assign Password" type="password" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
+            </div>
+          )}
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 sm:pt-6 border-t border-slate-100">
             <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">Cancel</button>
             <button type="submit" className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 transition">Save Client</button>
           </div>
