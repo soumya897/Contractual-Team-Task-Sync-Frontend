@@ -37,7 +37,7 @@ export default function Login() {
       // Redirect by role
       if (role === "ADMIN") navigate("/admin")
       else if (role === "DEVELOPER") navigate("/developer")
-      else navigate("/user")
+      else  navigate("/user")
 
     } catch (err) {
       setError("Invalid email or password")
