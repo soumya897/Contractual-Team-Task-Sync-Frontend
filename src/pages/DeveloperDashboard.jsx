@@ -4,8 +4,8 @@ import api from "../services/Api"
 // Icons
 const FolderIcon = () => <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>;
 const PlusIcon = () => <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" /></svg>;
-const TrashIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
-const EditIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>;
+const TrashIcon = () => <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>;
+const EditIcon = () => <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>;
 const BellIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>;
 const CheckIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>;
 
@@ -71,17 +71,38 @@ export default function DeveloperDashboard() {
     setShowNotifications(willShow);
     setShowProfileMenu(false);
 
-    if (willShow && unreadCount > 0) {
-      setUnreadCount(0);
-      setNotifications(prev => prev.map(notif => ({ ...notif, read: true })));
+    if (willShow) {
+      try {
+        const notifRes = await api.get("/api/developer/notifications");
+        const freshNotifs = notifRes.data || [];
+        
+        const trulyUnread = freshNotifs.filter(n => {
+          const local = notifications.find(localNotif => localNotif.id === n.id);
+          return !n.read && (!local || !local.read);
+        });
+        
+        setNotifications(prevNotifs => {
+          const prevMap = new Map(prevNotifs.map(n => [n.id, n]));
+          return freshNotifs.map(notif => {
+            return {
+              ...notif,
+              read: true
+            };
+          });
+        });
 
-      const unreadNotifs = notifications.filter(n => !n.read);
-      for (const notif of unreadNotifs) {
-        try {
-          await api.put(`/api/developer/notifications/${notif.id}/read`);
-        } catch (err) {
-          console.log("Error marking notification as read:", err);
+        if (trulyUnread.length > 0) {
+          setUnreadCount(0);
+          for (const notif of trulyUnread) {
+            try {
+              await api.put(`/api/developer/notifications/${notif.id}/read`);
+            } catch (err) {
+              console.log("Error marking notification as read:", err);
+            }
+          }
         }
+      } catch (err) {
+        console.log("Error refreshing notifications:", err);
       }
     }
   }
@@ -211,65 +232,65 @@ export default function DeveloperDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0F172A]">
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
         <div className="flex flex-col items-center">
-          <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-slate-400 font-medium tracking-widest uppercase text-xs">Synchronizing...</p>
+          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-4 text-gray-500 font-medium tracking-widest uppercase text-xs">Synchronizing...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-[#0F172A] text-slate-200 font-sans selection:bg-purple-500/30 relative">
+    <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-indigo-500/30 relative">
       
       {/* SUCCESS TOAST NOTIFICATION */}
       {successMessage && (
-        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-emerald-500/10 border border-emerald-500/30 px-6 py-3 rounded-2xl shadow-[0_10px_40px_rgba(16,185,129,0.15)] backdrop-blur-md z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-green-200 px-6 py-3 rounded-lg shadow-lg z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center font-bold">
+            <div className="w-6 h-6 bg-green-100 text-green-600 rounded-full flex items-center justify-center font-bold">
               <CheckIcon />
             </div>
-            <p className="text-emerald-400 font-bold text-sm tracking-wide">{successMessage}</p>
+            <p className="text-gray-800 font-bold text-sm tracking-wide">{successMessage}</p>
           </div>
         </div>
       )}
 
       {/* ERROR TOAST NOTIFICATION */}
       {errorMessage && (
-        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-red-500/10 border border-red-500/30 px-6 py-3 rounded-2xl shadow-[0_10px_40px_rgba(239,68,68,0.2)] backdrop-blur-md z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-red-200 px-6 py-3 rounded-lg shadow-lg z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 bg-red-500/20 text-red-400 rounded-full flex items-center justify-center font-bold">!</div>
-            <p className="text-red-400 font-bold text-sm tracking-wide">{errorMessage}</p>
+            <div className="w-6 h-6 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-bold">!</div>
+            <p className="text-gray-800 font-bold text-sm tracking-wide">{errorMessage}</p>
           </div>
         </div>
       )}
 
-      {/* ========== SIDEBAR (DARK THEME) ========== */}
-      <div className="w-80 bg-[#1E293B] border-r border-white/5 flex flex-col shadow-2xl z-20">
-        <div className="p-8">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-gradient-to-tr from-purple-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
-              <span className="text-white font-black text-xl">D</span>
+      {/* ========== SIDEBAR ========== */}
+      <div className="w-64 bg-[#111827] flex flex-col shadow-xl z-20">
+        <div className="p-6">
+          <div className="flex items-center gap-3 mb-10">
+            <div className="w-8 h-8 bg-indigo-500 rounded flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-lg">S</span>
             </div>
-            <h2 className="text-xl font-black text-white tracking-tighter italic">CORE_DEV</h2>
+            <h2 className="text-xl font-bold text-white tracking-wide">SyncDev</h2>
           </div>
           
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] mb-4 ml-1">Projects Library</p>
+          <p className="text-[11px] font-bold text-gray-500 uppercase tracking-widest mb-4 ml-1">Projects</p>
           <ul className="space-y-2">
             {projects.map(p => (
               <li
                 key={p.id}
                 onClick={() => openProject(p)}
                 className={`
-                  flex items-center px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-300 group
+                  flex items-center px-4 py-2.5 rounded-lg cursor-pointer transition-all duration-200 group font-medium text-sm
                   ${activeProject?.id === p.id
-                    ? "bg-purple-600 text-white shadow-lg shadow-purple-900/40 translate-x-1"
-                    : "text-slate-400 hover:bg-white/5 hover:text-slate-100"}
+                    ? "bg-indigo-600 text-white shadow-md"
+                    : "text-gray-400 hover:bg-gray-800 hover:text-white"}
                 `}
               >
                 <FolderIcon />
-                <span className="truncate font-semibold">{p.title}</span>
+                <span className="truncate">{p.title}</span>
               </li>
             ))}
           </ul>
@@ -280,24 +301,33 @@ export default function DeveloperDashboard() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* TOP NAVIGATION */}
-        <header className="h-20 bg-[#0F172A]/80 backdrop-blur-xl border-b border-white/5 flex justify-between items-center px-10 sticky top-0 z-30">
+        <header className="h-[88px] bg-white border-b border-gray-200 flex justify-between items-center px-8 flex-shrink-0 z-30">
           <div>
-            <h1 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">System Console</h1>
-            <p className="text-lg font-bold text-white">{activeProject ? activeProject.title : "Initialization Overlook"}</p>
+            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Welcome back, {profile?.name || "Developer"} 
+              <span className="mx-2 text-gray-300">|</span> 
+              {activeProject ? activeProject.title : "Overview"}
+            </p>
           </div>
           
           {profile && (
             <div className="flex items-center gap-6">
               
+              <div className="hidden md:flex items-center bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 w-64">
+                <svg className="w-4 h-4 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                <input type="text" placeholder="Search tasks..." className="bg-transparent border-none outline-none text-sm w-full text-gray-700" disabled />
+              </div>
+
               {/* NOTIFICATION BELL */}
               <div className="relative">
                 <button 
                   onClick={handleNotificationClick}
-                  className="p-2 text-slate-400 hover:text-white transition-colors relative focus:outline-none"
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors relative focus:outline-none"
                 >
                   <BellIcon />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-black text-white ring-2 ring-[#0F172A]">
+                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 text-[9px] font-bold text-white ring-2 ring-white">
                       {unreadCount}
                     </span>
                   )}
@@ -305,18 +335,24 @@ export default function DeveloperDashboard() {
 
                 {/* NOTIFICATION DROPDOWN */}
                 {showNotifications && (
-                  <div className="absolute right-0 mt-4 w-80 sm:w-96 bg-[#1E293B] border border-white/5 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="px-6 py-4 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
-                      <h3 className="font-black text-slate-300 tracking-tight">SYSTEM_ALERTS</h3>
-                      <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-1 rounded-full font-bold border border-purple-500/30">0 UNREAD</span>
+                  <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                      <h3 className="font-bold text-gray-900">Notifications</h3>
                     </div>
-                    <div className="max-h-[22rem] overflow-y-auto custom-scrollbar p-3">
+                    <div className="max-h-[22rem] overflow-y-auto p-3">
                       {notifications.length === 0 ? (
-                        <div className="p-8 text-center text-slate-500 text-sm italic">No recent alerts.</div>
+                        <div className="p-8 text-center text-gray-500 text-sm">No recent alerts.</div>
                       ) : (
                         notifications.map(notif => (
-                          <div key={notif.id} className="p-4 mb-2 rounded-xl border border-transparent opacity-70 bg-white/[0.02] transition-all">
-                            <p className="text-sm font-medium text-slate-200">{notif.message || notif.title}</p> 
+                          <div 
+                            key={notif.id} 
+                            className="p-4 mb-2 rounded-lg border bg-gray-50 border-gray-100 transition-all"
+                          >
+                            <div className="flex justify-between items-start gap-3">
+                              <p className="text-sm text-gray-800">
+                                {notif.message || notif.title}
+                              </p> 
+                            </div>
                           </div>
                         ))
                       )}
@@ -329,37 +365,40 @@ export default function DeveloperDashboard() {
               <div className="relative">
                 <button 
                   onClick={() => { setShowProfileMenu(!showProfileMenu); setShowNotifications(false); }}
-                  className="flex items-center gap-4 bg-white/5 p-1.5 rounded-full border border-white/10 ring-1 ring-white/5 hover:bg-white/10 transition-all focus:outline-none"
+                  className="flex items-center gap-3 hover:opacity-80 transition-opacity focus:outline-none text-left"
                 >
-                  <div className="w-9 h-9 bg-slate-800 border border-white/10 text-purple-400 rounded-full flex items-center justify-center font-black shadow-inner">
+                  <div className="hidden sm:block">
+                    <p className="text-sm font-bold text-gray-900 leading-tight">{profile.name}</p>
+                    <p className="text-xs text-gray-500 leading-tight">Developer</p>
+                  </div>
+                  <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center font-bold text-lg">
                     {profile.name[0]}
                   </div>
-                  <span className="text-sm font-bold text-slate-300 mr-4">{profile.name}</span>
                 </button>
 
                 {showProfileMenu && (
-                  <div className="absolute right-0 mt-4 w-56 bg-[#1E293B] border border-white/5 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-                    <div className="px-5 py-4 border-b border-white/5 bg-white/[0.02]">
-                      <p className="text-sm font-bold text-white truncate">{profile.name}</p>
-                      <p className="text-xs text-slate-400 truncate mt-0.5">{profile.email}</p>
+                  <div className="absolute right-0 mt-3 w-56 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="px-5 py-4 border-b border-gray-100 bg-gray-50">
+                      <p className="text-sm font-bold text-gray-900 truncate">{profile.name}</p>
+                      <p className="text-xs text-gray-500 truncate mt-0.5">{profile.email}</p>
                     </div>
-                    <div className="p-2 flex flex-col gap-1">
+                    <div className="p-2 flex flex-col">
                       <button 
                         onClick={() => { setShowProfileMenu(false); setShowProfileModal(true); }} 
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:text-purple-400 hover:bg-white/5 rounded-xl font-bold transition-all"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium transition-all"
                       >
                         Update Profile
                       </button>
                       <button 
                         onClick={() => { setShowProfileMenu(false); setShowPasswordModal(true); }} 
-                        className="w-full text-left px-4 py-2.5 text-sm text-slate-300 hover:text-purple-400 hover:bg-white/5 rounded-xl font-bold transition-all"
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg font-medium transition-all"
                       >
                         Change Password
                       </button>
-                      <div className="h-px bg-white/5 my-1"></div>
+                      <div className="h-px bg-gray-100 my-1"></div>
                       <button 
                         onClick={handleLogout} 
-                        className="w-full text-left px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 rounded-xl font-bold transition-all"
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-all"
                       >
                         Sign Out
                       </button>
@@ -373,140 +412,142 @@ export default function DeveloperDashboard() {
         </header>
 
         {/* MAIN SCROLLABLE BODY */}
-        <main className="p-10 overflow-y-auto space-y-10 custom-scrollbar z-0" onClick={() => {setShowProfileMenu(false); setShowNotifications(false);}}>
+        <main className="flex-1 p-8 overflow-y-auto space-y-8 z-0" onClick={() => {setShowProfileMenu(false); setShowNotifications(false);}}>
           
           {/* STATS STRIP */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard label="Dev Auth" value={profile?.email || "Loading..."} theme="neutral" />
-            <StatCard label="Active Sprint" value={ongoing} theme="purple" />
-            <StatCard label="Finalized" value={completed} theme="green" />
+            <StatCard label="YOUR EMAIL" value={profile?.email || "Loading..."} theme="blue" />
+            <StatCard label="ONGOING SPRINT" value={ongoing} theme="green" />
+            <StatCard label="COMPLETED PROJECTS" value={completed} theme="yellow" />
           </div>
 
           {!activeProject ? (
-            <div className="flex flex-col items-center justify-center py-32 border-2 border-dashed border-white/5 rounded-[2rem] bg-white/[0.02]">
-              <div className="w-20 h-20 bg-purple-500/10 text-purple-500 rounded-3xl flex items-center justify-center mb-6 animate-pulse">
+            <div className="flex flex-col items-center justify-center py-24 mt-8 bg-white border border-gray-200 rounded-xl shadow-sm">
+              <div className="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mb-4">
                  <FolderIcon />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2">No Project Mounted</h3>
-              <p className="text-slate-500 max-w-xs text-center">Select a repository from the left panel to begin managing tasks.</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">No Project Selected</h3>
+              <p className="text-gray-500 text-sm">Select a project from the left panel to manage your tasks.</p>
             </div>
           ) : (
-            <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
+            <div className="space-y-8 animate-in fade-in duration-300">
               
-              {/* PROGRESS ENGINE */}
-              <div className="bg-[#1E293B] p-8 rounded-[2rem] border border-white/5 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-                    <span className="text-8xl font-black">{completion}%</span>
+              {/* CONTENT HEADER AND PROGRESS BAR */}
+              <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm relative">
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{activeProject.title}</h2>
+                    <p className="text-sm text-gray-500 mt-2">{activeProject.description}</p>
+                  </div>
+                  <span className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded text-xs font-bold uppercase tracking-wider">
+                    {completion === 100 ? "Completed" : "Ongoing"}
+                  </span>
                 </div>
-                <div className="relative z-10 max-w-2xl">
-                    <h2 className="text-3xl font-black text-white mb-3">Deployment Status</h2>
-                    <p className="text-slate-400 mb-8 leading-relaxed italic">"{activeProject.description}"</p>
-                    
-                    <div className="space-y-3">
-                        <div className="flex justify-between text-xs font-black uppercase tracking-tighter">
-                            <span className="text-purple-400">Completion Velocity</span>
-                            <span className="text-slate-400">{completion}%</span>
-                        </div>
-                        <div className="w-full bg-slate-900 rounded-full h-4 p-1 ring-1 ring-white/10">
-                            <div 
-                            className="bg-gradient-to-r from-indigo-600 via-purple-500 to-fuchsia-400 h-full rounded-full transition-all duration-1000 shadow-[0_0_20px_rgba(168,85,247,0.4)]"
-                            style={{ width: `${completion}%` }}
-                            />
-                        </div>
+                
+                <div className="space-y-2">
+                    <div className="flex justify-between text-xs font-bold text-gray-500 uppercase">
+                        <span>Progress</span>
+                        <span className="text-indigo-600">{completion}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-2">
+                        <div 
+                        className="bg-indigo-600 h-full rounded-full transition-all duration-1000"
+                        style={{ width: `${completion}%` }}
+                        />
                     </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-                {/* TASK CREATION MODAL-LIKE AREA */}
-                <div className="lg:col-span-5">
-                  <form onSubmit={addTask} className="bg-[#1E293B] p-8 rounded-[2rem] border border-white/5 sticky top-28 shadow-xl">
-                    <h3 className="text-lg font-black text-white mb-6 flex items-center">
-                      <PlusIcon /> NEW_TASK
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                {/* TASK CREATION FORM */}
+                <div className="lg:col-span-4">
+                  <form onSubmit={addTask} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm sticky top-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center">
+                      Add New Task
                     </h3>
-                    <div className="space-y-5">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Task Identifier</label>
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Task Title</label>
                         <input
-                          placeholder="Refactor auth module..."
-                          className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-xl text-white placeholder:text-slate-600 focus:ring-2 focus:ring-purple-500 outline-none transition-all shadow-inner"
+                          placeholder="e.g. Build API endpoint"
+                          className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                           value={newTitle}
                           onChange={e => setNewTitle(e.target.value)}
                         />
                       </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Technical Specs</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Description</label>
                         <textarea
-                          placeholder="Detail the parameters..."
+                          placeholder="Briefly describe the task..."
                           rows="4"
-                          className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-xl text-white placeholder:text-slate-600 focus:ring-2 focus:ring-purple-500 outline-none transition-all shadow-inner"
+                          className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                           value={newDesc}
                           onChange={e => setNewDesc(e.target.value)}
                         />
                       </div>
-                      <button className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-4 rounded-xl shadow-lg shadow-purple-900/20 transition-all hover:-translate-y-1 active:scale-95">
-                        PUSH TO STACK
+                      <button className="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-3 rounded-lg shadow-sm transition-all mt-2 flex justify-center items-center">
+                        <PlusIcon /> Create Task
                       </button>
                     </div>
                   </form>
                 </div>
 
-                {/* CHECKLIST TERMINAL */}
-                <div className="lg:col-span-7">
-                  <div className="bg-[#1E293B] rounded-[2rem] border border-white/5 shadow-xl overflow-hidden">
-                    <div className="px-8 py-6 border-b border-white/5 bg-white/[0.02] flex justify-between items-center">
-                       <h3 className="font-black text-slate-300 tracking-tight">OBJECTIVE_LIST</h3>
-                       <span className="text-[10px] bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full font-bold border border-purple-500/30">{tasks.length} ITEMS</span>
+                {/* TASK LIST AREA */}
+                <div className="lg:col-span-8">
+                  <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex justify-between items-center">
+                       <h3 className="font-bold text-gray-900">Task Overview</h3>
+                       <span className="text-xs bg-gray-200 text-gray-700 px-2.5 py-1 rounded-full font-bold">{tasks.length}</span>
                     </div>
 
-                    <div className="p-4">
+                    <div className="p-0">
                       {taskLoading ? (
-                        <div className="p-12 text-center text-slate-600 font-mono text-sm animate-pulse">RELOADING_TASK_ARRAY...</div>
+                        <div className="p-12 text-center text-gray-500 text-sm">Loading tasks...</div>
                       ) : tasks.length === 0 ? (
-                        <div className="p-16 text-center text-slate-500">
-                          <p className="text-sm font-medium italic">Empty stack. No current objectives.</p>
+                        <div className="p-12 text-center text-gray-500 text-sm">
+                          No tasks found. Start by adding a new one.
                         </div>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="divide-y divide-gray-100">
                           {tasks.map(task => (
-                            <div key={task.id} className="group flex items-center justify-between p-5 hover:bg-white/[0.03] transition-all rounded-2xl border border-transparent hover:border-white/5">
-                              <div className="flex items-center gap-5">
+                            <div key={task.id} className="group flex flex-col sm:flex-row sm:items-center justify-between p-5 hover:bg-gray-50 transition-colors">
+                              <div className="flex items-start sm:items-center gap-4 mb-4 sm:mb-0">
                                 <button 
                                   type="button"
                                   onClick={() => toggleTask(task)}
-                                  className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                  className={`mt-1 sm:mt-0 w-5 h-5 rounded border flex-shrink-0 flex items-center justify-center transition-all ${
                                     task.completed 
-                                    ? "bg-purple-600 border-purple-600 shadow-[0_0_10px_rgba(168,85,247,0.4)]" 
-                                    : "border-slate-700 hover:border-purple-500"
+                                    ? "bg-indigo-600 border-indigo-600" 
+                                    : "border-gray-300 hover:border-indigo-500 bg-white"
                                   }`}
                                 >
-                                  {task.completed && <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>}
+                                  {task.completed && <svg className="w-3.5 h-3.5 text-white" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd"/></svg>}
                                 </button>
                                 <div>
-                                  <p className={`font-bold tracking-tight transition-all ${task.completed ? "text-slate-600 line-through" : "text-slate-200"}`}>
+                                  <p className={`text-sm font-bold transition-all ${task.completed ? "text-gray-400 line-through" : "text-gray-900"}`}>
                                     {task.title}
                                   </p>
                                   {task.description && !task.completed && (
-                                    <p className="text-xs text-slate-500 mt-1 font-medium">{task.description}</p>
+                                    <p className="text-xs text-gray-500 mt-1">{task.description}</p>
                                   )}
                                 </div>
                               </div>
 
-                              {/* Action Buttons: Edit & Delete */}
-                              <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                              <div className="flex items-center gap-2 pl-9 sm:pl-0 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
                                   type="button"
                                   onClick={() => setEditingTask(task)}
-                                  className="p-2.5 text-slate-600 hover:text-indigo-400 hover:bg-indigo-500/10 rounded-xl transition-all"
+                                  className="px-4 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-md text-xs font-bold transition-colors flex items-center"
                                 >
-                                  <EditIcon />
+                                  Edit
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => deleteTask(task.id)}
-                                  className="p-2.5 text-slate-600 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                                  className="px-4 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 rounded-md text-xs font-bold transition-colors flex items-center"
                                 >
-                                  <TrashIcon />
+                                  Delete
                                 </button>
                               </div>
 
@@ -517,6 +558,7 @@ export default function DeveloperDashboard() {
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
           )}
@@ -556,15 +598,15 @@ export default function DeveloperDashboard() {
 /* ================= THEMED STAT CARD ================= */
 function StatCard({ label, value, theme }) {
   const configs = {
-    neutral: "text-slate-400 border-white/5 bg-[#1E293B]",
-    purple: "text-purple-400 border-purple-500/20 bg-purple-500/5",
-    green: "text-emerald-400 border-emerald-500/20 bg-emerald-500/5"
+    blue: "border-l-indigo-600 text-gray-900",
+    green: "border-l-emerald-500 text-gray-900",
+    yellow: "border-l-amber-500 text-gray-900"
   }
 
   return (
-    <div className={`p-6 rounded-[1.5rem] border shadow-xl transition-all hover:scale-[1.02] ${configs[theme]}`}>
-      <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-2">{label}</p>
-      <h3 className="text-xl font-black truncate text-white">
+    <div className={`p-6 bg-white rounded-xl shadow-sm border border-gray-100 border-l-4 ${configs[theme]}`}>
+      <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">{label}</p>
+      <h3 className="text-3xl font-black truncate">
         {value}
       </h3>
     </div>
@@ -592,48 +634,48 @@ function EditTaskModal({ show, task, onClose, onSave }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-[#0F172A]/80 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-[#1E293B] w-full max-w-md p-8 rounded-[2rem] border border-white/5 shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-md p-8 rounded-2xl shadow-xl animate-in zoom-in-95 duration-200">
         
-        <h3 className="text-xl font-black text-white mb-6 flex items-center">
-          <EditIcon /> <span className="ml-2">EDIT_TASK</span>
+        <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+          Edit Task
         </h3>
         
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Task Identifier</label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-500 uppercase">Task Title</label>
             <input
-              className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-xl text-white placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner"
+              className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               value={title}
               onChange={e => setTitle(e.target.value)}
               required
             />
           </div>
           
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Technical Specs</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-500 uppercase">Description</label>
             <textarea
               rows="4"
-              className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-xl text-white placeholder:text-slate-600 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-inner"
+              className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               value={description}
               onChange={e => setDescription(e.target.value)}
               required
             />
           </div>
           
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-4">
             <button 
               type="button" 
               onClick={onClose}
-              className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-xl transition-all"
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold py-3 rounded-lg transition-all"
             >
-              CANCEL
+              Cancel
             </button>
             <button 
               type="submit"
-              className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-xl shadow-lg shadow-indigo-900/20 transition-all hover:-translate-y-1 active:scale-95"
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-3 rounded-lg shadow-sm transition-all"
             >
-              SAVE_CHANGES
+              Save Changes
             </button>
           </div>
         </form>
@@ -677,48 +719,48 @@ function UpdateProfileModal({ show, profile, onClose, reload, onError, onSuccess
   }
 
   return (
-    <div className="fixed inset-0 bg-[#0F172A]/80 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-[#1E293B] w-full max-w-sm p-8 rounded-[2rem] border border-white/5 shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-sm p-8 rounded-2xl shadow-xl animate-in zoom-in-95 duration-200">
         
-        <h3 className="text-xl font-black text-white mb-6">
-          UPDATE_PROFILE
+        <h3 className="text-xl font-bold text-gray-900 mb-6">
+          Update Profile
         </h3>
         
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Developer Name</label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-500 uppercase">Developer Name</label>
             <input
-              className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-xl text-white placeholder:text-slate-600 focus:ring-2 focus:ring-purple-500 outline-none transition-all shadow-inner"
+              className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               value={name}
               onChange={e => setName(e.target.value)}
               required
             />
           </div>
           
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Contact Number</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-500 uppercase">Contact Number</label>
             <input
               type="tel"
-              className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-xl text-white placeholder:text-slate-600 focus:ring-2 focus:ring-purple-500 outline-none transition-all shadow-inner"
+              className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               value={phone}
               onChange={e => setPhone(e.target.value)}
               required
             />
           </div>
           
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-4">
             <button 
               type="button" 
               onClick={onClose}
-              className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-xl transition-all"
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold py-3 rounded-lg transition-all"
             >
-              CANCEL
+              Cancel
             </button>
             <button 
               type="submit"
-              className="flex-1 bg-purple-600 hover:bg-purple-500 text-white font-black py-4 rounded-xl shadow-lg shadow-purple-900/20 transition-all hover:-translate-y-1 active:scale-95"
+              className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-3 rounded-lg shadow-sm transition-all"
             >
-              CONFIRM
+              Confirm
             </button>
           </div>
         </form>
@@ -732,7 +774,6 @@ function ChangePasswordModal({ show, onClose, onError, onSuccess }) {
   const [oldPassword, setOldPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
 
-  // Reset form when modal closes/opens
   useEffect(() => {
     if (show) {
       setOldPassword("")
@@ -759,19 +800,19 @@ function ChangePasswordModal({ show, onClose, onError, onSuccess }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-[#0F172A]/80 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
-      <div className="bg-[#1E293B] w-full max-w-sm p-8 rounded-[2rem] border border-white/5 shadow-2xl animate-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center z-50 p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full max-w-sm p-8 rounded-2xl shadow-xl animate-in zoom-in-95 duration-200">
         
-        <h3 className="text-xl font-black text-white mb-6">
-          UPDATE_SECURITY
+        <h3 className="text-xl font-bold text-gray-900 mb-6">
+          Update Security
         </h3>
         
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Current Password</label>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-500 uppercase">Current Password</label>
             <input
               type="password"
-              className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-xl text-white placeholder:text-slate-600 focus:ring-2 focus:ring-red-500 outline-none transition-all shadow-inner"
+              className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               value={oldPassword}
               onChange={e => setOldPassword(e.target.value)}
               placeholder="••••••••"
@@ -779,11 +820,11 @@ function ChangePasswordModal({ show, onClose, onError, onSuccess }) {
             />
           </div>
           
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">New Password</label>
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-gray-500 uppercase">New Password</label>
             <input
               type="password"
-              className="w-full bg-[#0F172A] border border-white/5 p-4 rounded-xl text-white placeholder:text-slate-600 focus:ring-2 focus:ring-red-500 outline-none transition-all shadow-inner"
+              className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               placeholder="••••••••"
@@ -791,19 +832,19 @@ function ChangePasswordModal({ show, onClose, onError, onSuccess }) {
             />
           </div>
           
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-4">
             <button 
               type="button" 
               onClick={onClose}
-              className="flex-1 bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-xl transition-all"
+              className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold py-3 rounded-lg transition-all"
             >
-              CANCEL
+              Cancel
             </button>
             <button 
               type="submit"
-              className="flex-1 bg-red-600 hover:bg-red-500 text-white font-black py-4 rounded-xl shadow-lg shadow-red-900/20 transition-all hover:-translate-y-1 active:scale-95"
+              className="flex-1 bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-3 rounded-lg shadow-sm transition-all"
             >
-              CONFIRM
+              Confirm
             </button>
           </div>
         </form>
