@@ -46,16 +46,16 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 font-sans px-4 selection:bg-indigo-100 selection:text-indigo-900">
       
       {/* Background Decorative Gradients */}
-        <div className="fixed top-[-10%] left-[-10%] w-96 h-96 bg-indigo-400 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob"></div>
-        <div className="fixed top-[20%] right-[-5%] w-96 h-96 bg-violet-300 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob animation-delay-2000"></div>
-        <div className="fixed bottom-[-20%] left-[20%] w-96 h-96 bg-fuchsia-300 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob animation-delay-4000"></div>
         
-      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
         
+      <div className="z-1 w-full max-w-md bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100">
+        <div className="fixed top-[-10%] left-[-10%] w-96 h-96 bg-indigo-400 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob z-[-1]"></div>
+        <div className="fixed top-[20%] right-[-5%] w-96 h-96 bg-violet-300 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob animation-delay-2000 z-[-1]"></div>
+        <div className="fixed bottom-[-20%] left-[20%] w-96 h-96 bg-fuchsia-300 rounded-full mix-blend-multiply filter blur-[128px] opacity-40 animate-blob animation-delay-4000 z-[-1]"></div>
         {/* Branding / Logo Element */}
         <div className="flex justify-center mb-6">
           <div className="bg-indigo-600 text-white font-bold h-12 w-12 rounded-xl flex items-center justify-center text-xl shadow-md shadow-indigo-200">
-            S
+            A
           </div>
         </div>
 
