@@ -17,17 +17,14 @@ const KeyIcon = () => <svg className="w-5 h-5 mr-3" fill="none" stroke="currentC
 const LogOutIcon = () => <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>;
 
 export default function DeveloperDashboard() {
-
+  /* ================= LOGIC ================= */
   const [profile, setProfile] = useState(null)
   const [projects, setProjects] = useState([])
   const [activeProject, setActiveProject] = useState(null)
-
   const [tasks, setTasks] = useState([])
   const [completion, setCompletion] = useState(0)
-
-  const [title, setTitle] = useState("")
-  const [desc, setDesc] = useState("")
-
+  const [newTitle, setNewTitle] = useState("")
+  const [newDesc, setNewDesc] = useState("")
   const [loading, setLoading] = useState(true)
   const [taskLoading, setTaskLoading] = useState(false)
   const [ongoing, setOngoing] = useState(0)
@@ -50,6 +47,8 @@ export default function DeveloperDashboard() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   useEffect(() => {
+    loadData()
+  }, [])
 
   async function loadData() {
     try {
@@ -133,92 +132,113 @@ export default function DeveloperDashboard() {
   }
 
   async function openProject(project) {
-
     try {
-
+      setTaskLoading(true)
       setActiveProject(project)
-
-      const taskRes =
-        await api.get(`/api/tasks/project/${project.id}`)
-
+      
+      const taskRes = await api.get(`/api/tasks/project/${project.id}`)
       setTasks(taskRes.data || [])
 
-      const compRes =
-        await api.get(`/api/tasks/project/${project.id}/completion`)
+      try {
+        const compRes = await api.get(`/api/tasks/project/${project.id}/completion`)
+        setCompletion(compRes.data || 0)
+      } catch (compErr) {
+        console.log("Completion Fetch Error:", compErr)
+        setCompletion(0)
+      }
 
-      setCompletion(compRes.data || 0)
-
-    } catch (err) {
-      console.log("Project Open Error:", err)
-    }
+    } catch (err) { console.log("Task Load Error:", err) }
+    setTaskLoading(false)
   }
 
-  /* ================= ADD TASK ================= */
+  /* ================= API LOGIC & ERROR HANDLING ================= */
+
+  function getDeveloperId() {
+    if (profile?.id) return profile.id;
+    if (profile?.developerId) return profile.developerId;
+    if (activeProject?.developers && profile?.email) {
+      const matchedDev = activeProject.developers.find(d => d.email === profile.email);
+      if (matchedDev?.id) return matchedDev.id;
+    }
+    return null;
+  }
+
+  function showErrorToast(msg) {
+    setErrorMessage(msg);
+    setTimeout(() => { setErrorMessage(""); }, 3500);
+  }
+
+  function showSuccessToast(msg) {
+    setSuccessMessage(msg);
+    setTimeout(() => { setSuccessMessage(""); }, 3500);
+  }
+
+  function handleTaskError(err) {
+    if (err.response?.status === 403) {
+      showErrorToast("You can only update and delete your own tasks.");
+    } else {
+      const msg = err.response?.data?.message || err.response?.data || "An error occurred.";
+      showErrorToast(typeof msg === 'string' ? msg : "An error occurred.");
+    }
+  }
 
   async function addTask(e) {
-
     e.preventDefault()
-
-    if (!title || !desc || !activeProject) {
-      alert("Fill all fields")
-      return
-    }
+    if (!newTitle || !newDesc || !activeProject) return
+    const devId = getDeveloperId();
+    if (!devId) return;
 
     try {
-
-      // ✅ NO developerId (backend uses token)
       await api.post("/api/tasks", {
-        title: title,
-        description: desc,
-        projectId: activeProject.id
+        title: newTitle, description: newDesc,
+        projectId: Number(activeProject.id), developerId: Number(devId)
       })
-
-      setTitle("")
-      setDesc("")
-
-      openProject(activeProject)
-
-    } catch (err) {
-
-      console.log("Add Task Error:", err)
-      alert("Task add failed")
-
-    }
+      setNewTitle(""); setNewDesc(""); openProject(activeProject)
+      showSuccessToast("Task created successfully!");
+    } catch (err) { handleTaskError(err) }
   }
-
-  /* ================= COMPLETE TASK ================= */
 
   async function toggleTask(task) {
-
+    const devId = getDeveloperId();
     try {
-
-      await api.post(`/api/tasks/${task.id}/complete`)
-
+      await api.put(`/api/tasks/${task.id}`, { 
+        title: task.title, description: task.description, completed: !task.completed,
+        projectId: Number(activeProject.id), developerId: Number(devId)
+      })
       openProject(activeProject)
-
-    } catch (err) {
-      console.log("Update Error:", err)
-    }
+      showSuccessToast("Task status updated!");
+    } catch (err) { handleTaskError(err) }
   }
 
-  /* ================= DELETE TASK ================= */
+  async function updateTaskDetails(taskId, updatedTitle, updatedDesc, isCompleted) {
+    const devId = getDeveloperId();
+    try {
+      await api.put(`/api/tasks/${taskId}`, { 
+        title: updatedTitle, description: updatedDesc, completed: isCompleted,
+        projectId: Number(activeProject.id), developerId: Number(devId)
+      })
+      setEditingTask(null)
+      openProject(activeProject)
+      showSuccessToast("Task updated successfully!");
+    } catch (err) { 
+      setEditingTask(null)
+      handleTaskError(err) 
+    }
+  }
 
   async function deleteTask(id) {
-
-    if (!window.confirm("Delete task?")) return
-
+    if (!window.confirm("Delete this task?")) return
+    const devId = getDeveloperId();
     try {
-
-      await api.delete(`/api/tasks/${id}`)
-
+      await api.delete(`/api/tasks/${id}`, {
+        data: { projectId: Number(activeProject.id), developerId: Number(devId) }
+      })
       openProject(activeProject)
-
-    } catch (err) {
-      console.log("Delete Error:", err)
-    }
+      showSuccessToast("Task deleted successfully!");
+    } catch (err) { handleTaskError(err) }
   }
 
-  /* ================= LOADING ================= */
+  /* ================= UI RENDER ================= */
 
   if (loading) {
     return (
@@ -411,15 +431,9 @@ export default function DeveloperDashboard() {
                 </div>
               </div>
 
-              <span className="font-semibold">
-                {profile.name}
-              </span>
-
             </div>
-
           )}
-
-        </div>
+        </header>
 
         {/* MAIN SCROLLABLE BODY */}
         <main className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6 md:space-y-8 z-0" onClick={() => {setShowProfileMenu(false); setShowNotifications(false);}}>
@@ -561,21 +575,45 @@ export default function DeveloperDashboard() {
                                 </button>
                               </div>
 
-                    ))}
-
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-
                 </div>
 
               </div>
-
             </div>
-
-          </>
-
-        )}
-
+          )}
+        </main>
       </div>
+
+      {/* ========== EDIT TASK MODAL ========== */}
+      <EditTaskModal 
+        show={!!editingTask} 
+        task={editingTask} 
+        onClose={() => setEditingTask(null)} 
+        onSave={updateTaskDetails} 
+      />
+
+      {/* ========== UPDATE PROFILE MODAL ========== */}
+      <UpdateProfileModal 
+        show={showProfileModal} 
+        profile={profile} 
+        onClose={() => setShowProfileModal(false)} 
+        reload={loadData}
+        onError={showErrorToast}
+        onSuccess={showSuccessToast}
+      />
+
+      {/* ========== CHANGE PASSWORD MODAL ========== */}
+      <ChangePasswordModal 
+        show={showPasswordModal} 
+        onClose={() => setShowPasswordModal(false)} 
+        onError={showErrorToast}
+        onSuccess={showSuccessToast}
+      />
 
     </div>
   )
