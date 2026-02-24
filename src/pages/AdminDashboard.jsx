@@ -8,6 +8,9 @@ const BellIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor
 const CheckIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>;
 // Added Search Icon
 const SearchIcon = () => <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
+// NEW: Mobile Sidebar Icons
+const MenuIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>;
+const CloseIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>;
 
 export default function AdminDashboard() {
 
@@ -25,9 +28,8 @@ export default function AdminDashboard() {
   const [showModal, setShowModal] = useState(false)
   const [editingProject, setEditingProject] = useState(null)
 
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [showProfileModal, setShowProfileModal] = useState(false)
-  const [showPasswordModal, setShowPasswordModal] = useState(false) // NEW: Password Modal State
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   // Notification States
   const [showNotifications, setShowNotifications] = useState(false)
@@ -36,10 +38,13 @@ export default function AdminDashboard() {
 
   // Toast States
   const [successMessage, setSuccessMessage] = useState("")
-  const [errorMessage, setErrorMessage] = useState("") // NEW: Error Toast State
+  const [errorMessage, setErrorMessage] = useState("")
 
   // Search State
   const [searchQuery, setSearchQuery] = useState("")
+  
+  // NEW: Mobile Menu State
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const navigate = useNavigate()
 
@@ -109,7 +114,7 @@ export default function AdminDashboard() {
     // --- Background Notification Polling (Every 10 seconds) ---
     const notificationInterval = setInterval(() => {
       fetchNotifications()
-    }, 1000000); 
+    }, 100000); 
 
     // Cleanup interval on unmount
     return () => clearInterval(notificationInterval);
@@ -134,7 +139,6 @@ export default function AdminDashboard() {
   async function handleNotificationClick() {
     const willShow = !showNotifications;
     setShowNotifications(willShow);
-    setShowProfileMenu(false);
 
     if (willShow && unreadCount > 0) {
       setUnreadCount(0);
@@ -173,9 +177,9 @@ export default function AdminDashboard() {
 
       {/* SUCCESS TOAST NOTIFICATION */}
       {successMessage && (
-        <div className="fixed bottom-24 md:bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-emerald-100 px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(16,185,129,0.15)] z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-emerald-100 px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(16,185,129,0.15)] z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 w-[90%] md:w-auto">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+            <div className="w-7 h-7 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shrink-0">
               <CheckIcon />
             </div>
             <p className="text-slate-700 font-bold text-sm tracking-wide pr-2">{successMessage}</p>
@@ -185,9 +189,9 @@ export default function AdminDashboard() {
 
       {/* ERROR TOAST NOTIFICATION */}
       {errorMessage && (
-        <div className="fixed bottom-24 md:bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-red-100 px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(239,68,68,0.15)] z-50 animate-in slide-in-from-bottom-5 fade-in duration-300">
+        <div className="fixed bottom-10 left-1/2 transform -translate-x-1/2 bg-white border border-red-100 px-5 py-3.5 rounded-2xl shadow-[0_10px_40px_rgba(239,68,68,0.15)] z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 w-[90%] md:w-auto">
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-bold">
+            <div className="w-7 h-7 bg-red-100 text-red-600 rounded-full flex items-center justify-center font-bold shrink-0">
               !
             </div>
             <p className="text-slate-700 font-bold text-sm tracking-wide pr-2">{errorMessage}</p>
@@ -195,42 +199,71 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* SIDEBAR - BECOMES BOTTOM NAVIGATION ON MOBILE */}
-      <div className="fixed bottom-0 left-0 right-0 md:relative md:h-screen w-full md:w-64 bg-slate-900 border-t md:border-t-0 md:border-r border-slate-800 p-2 md:p-6 flex flex-row md:flex-col shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.1)] md:shadow-xl z-50 items-center md:items-stretch overflow-x-auto md:overflow-visible [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <div className="hidden md:flex items-center gap-3 mb-10 px-2">
-          <div className="w-8 h-8 bg-indigo-500 rounded-lg shadow-lg flex items-center justify-center">
-            <span className="text-white font-bold text-xl">S</span>
+      {/* ========== MOBILE OVERLAY ========== */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 z-40 md:hidden transition-opacity"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* SIDEBAR - SLIDE OUT ON MOBILE */}
+      <div className={`fixed inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-800 p-6 flex flex-col shadow-2xl md:shadow-[0_-8px_15px_-3px_rgba(0,0,0,0.1)] z-50 transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"}`}>
+        
+        <div className="flex items-center justify-between gap-3 mb-10 shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-indigo-500 rounded-lg shadow-lg flex items-center justify-center shrink-0">
+              <span className="text-white font-bold text-xl">S</span>
+            </div>
+            <h2 className="text-xl font-black text-white tracking-tight">Sync<span className="text-indigo-400">Admin</span></h2>
           </div>
-          <h2 className="text-xl font-black text-white tracking-tight">Sync<span className="text-indigo-400">Admin</span></h2>
+          {/* Mobile Close Button */}
+          <button className="md:hidden text-slate-400 hover:text-white focus:outline-none" onClick={() => setIsMobileMenuOpen(false)}>
+            <CloseIcon />
+          </button>
         </div>
 
-        <ul className="flex flex-row md:flex-col gap-2 md:gap-0 md:space-y-2 flex-1 w-full m-0 items-center md:items-stretch">
-          <div className="hidden md:block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-2 mt-4">Projects</div>
-          <MenuItem label="All Projects" active={activeTab === "PROJECTS"} onClick={() => {setActiveTab("PROJECTS"); setSearchQuery("");}} />
-          <MenuItem label="Current Projects" active={activeTab === "ONGOING"} onClick={() => {setActiveTab("ONGOING"); setSearchQuery("");}} />
-          <MenuItem label="Completed Projects" active={activeTab === "COMPLETED"} onClick={() => {setActiveTab("COMPLETED"); setSearchQuery("");}} />
+        <ul className="flex flex-col gap-2 flex-1 w-full m-0 items-stretch overflow-y-auto">
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2 mt-2 shrink-0">Projects</div>
+          <MenuItem label="All Projects" active={activeTab === "PROJECTS"} onClick={() => {setActiveTab("PROJECTS"); setSearchQuery(""); setIsMobileMenuOpen(false);}} />
+          <MenuItem label="Current Projects" active={activeTab === "ONGOING"} onClick={() => {setActiveTab("ONGOING"); setSearchQuery(""); setIsMobileMenuOpen(false);}} />
+          <MenuItem label="Completed Projects" active={activeTab === "COMPLETED"} onClick={() => {setActiveTab("COMPLETED"); setSearchQuery(""); setIsMobileMenuOpen(false);}} />
 
-          <div className="hidden md:block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-2 mt-8">People</div>
-          {/* Subtle divider for mobile to separate projects from people */}
-          <div className="w-px h-6 bg-slate-700 mx-1 md:hidden"></div>
-          <MenuItem label="All Clients" active={activeTab === "CLIENTS"} onClick={() => {setActiveTab("CLIENTS"); setSearchQuery("");}} />
-          <MenuItem label="All Developers" active={activeTab === "DEVS"} onClick={() => {setActiveTab("DEVS"); setSearchQuery("");}} />
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2 mt-8 shrink-0">People</div>
+          <MenuItem label="All Clients" active={activeTab === "CLIENTS"} onClick={() => {setActiveTab("CLIENTS"); setSearchQuery(""); setIsMobileMenuOpen(false);}} />
+          <MenuItem label="All Developers" active={activeTab === "DEVS"} onClick={() => {setActiveTab("DEVS"); setSearchQuery(""); setIsMobileMenuOpen(false);}} />
+
+          {/* Account Actions moved from navbar dropdown */}
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2 mt-auto pt-6 border-t border-slate-800 shrink-0">Account</div>
+          <MenuItem label="Update Profile" active={false} onClick={() => {setShowProfileModal(true); setIsMobileMenuOpen(false);}} />
+          <MenuItem label="Change Password" active={false} onClick={() => {setShowPasswordModal(true); setIsMobileMenuOpen(false);}} />
+          <li onClick={handleLogout}
+              className="flex-shrink-0 px-4 py-3 rounded-xl cursor-pointer text-sm font-semibold transition-all duration-200 whitespace-nowrap text-red-400 hover:bg-red-500/10 hover:text-red-300">
+              Sign Out
+          </li>
         </ul>
       </div>
 
       {/* MAIN CONTENT */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden pb-[60px] md:pb-0 w-full">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden w-full">
 
         {/* TOP NAVBAR */}
         <div className="h-16 sm:h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex justify-between items-center px-4 sm:px-8 shadow-sm shrink-0 z-10 sticky top-0 gap-4">
-          <div className="flex flex-col justify-center min-w-0 pr-4">
-            <h1 className="font-bold text-lg sm:text-2xl text-slate-800 tracking-tight truncate">
-              {activeTab === "PROJECTS" ? "Dashboard" :
-                activeTab === "ONGOING" ? "Active Projects" :
-                  activeTab === "COMPLETED" ? "Completed Projects" :
-                    activeTab === "CLIENTS" ? "Clients" : "Developers"}
-            </h1>
-            <p className="hidden sm:block text-sm text-slate-500 truncate">Welcome back, {profile?.name?.split(' ')[0] || 'Admin'}</p>
+          
+          <div className="flex items-center gap-3 sm:gap-0 min-w-0 pr-4">
+            {/* Hamburger Button for Mobile */}
+            <button className="md:hidden text-slate-500 hover:text-slate-800 focus:outline-none shrink-0" onClick={() => setIsMobileMenuOpen(true)}>
+              <MenuIcon />
+            </button>
+            <div className="flex flex-col justify-center min-w-0">
+              <h1 className="font-bold text-lg sm:text-2xl text-slate-800 tracking-tight truncate">
+                {activeTab === "PROJECTS" ? "Dashboard" :
+                  activeTab === "ONGOING" ? "Active Projects" :
+                    activeTab === "COMPLETED" ? "Completed Projects" :
+                      activeTab === "CLIENTS" ? "Clients" : "Developers"}
+              </h1>
+              <p className="hidden sm:block text-sm text-slate-500 truncate">Welcome back, {profile?.name?.split(' ')[0] || 'Admin'}</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3 sm:gap-5 shrink-0 flex-1 justify-end">
@@ -249,8 +282,8 @@ export default function AdminDashboard() {
               />
             </div>
 
-            {/* NOTIFICATION BELL (LIGHT THEME) */}
-            <div className="relative">
+            {/* NOTIFICATION BELL */}
+            <div className="relative border-r border-slate-200 pr-4 md:pr-6">
               <button
                 onClick={handleNotificationClick}
                 className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-full transition-all relative focus:outline-none"
@@ -265,10 +298,10 @@ export default function AdminDashboard() {
 
               {/* NOTIFICATION DROPDOWN */}
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-80 sm:w-96 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                <div className="absolute right-0 md:right-auto md:left-0 mt-3 w-80 sm:w-96 bg-white border border-slate-100 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                   <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                     <h3 className="font-bold text-slate-800 tracking-tight">System Alerts</h3>
-                    <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full font-bold">0 Unread</span>
+                    <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-full font-bold">{unreadCount} Unread</span>
                   </div>
                   <div className="max-h-[22rem] overflow-y-auto custom-scrollbar p-3">
                     {notifications.length === 0 ? (
@@ -285,41 +318,15 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* PROFILE MENU */}
-            <div className="relative">
-              <button
-                onClick={() => { setShowProfileMenu(prev => !prev); setShowNotifications(false); }}
-                className="flex items-center gap-2 sm:gap-3 hover:bg-slate-100 p-1 sm:p-1.5 rounded-full transition border border-transparent hover:border-slate-200 focus:outline-none"
-              >
-                <div className="hidden sm:flex flex-col items-end pr-1">
-                  <span className="font-semibold text-sm text-slate-700 leading-tight">{profile?.name}</span>
-                  <span className="text-xs text-slate-500 font-medium">Administrator</span>
-                </div>
-                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-100 text-indigo-700 font-bold text-base sm:text-lg rounded-full flex items-center justify-center shadow-inner">
-                  {profile?.name?.[0]?.toUpperCase()}
-                </div>
-              </button>
-
-              {showProfileMenu && (
-                <div className="absolute right-0 mt-3 w-48 sm:w-56 bg-white shadow-2xl rounded-2xl border border-slate-100 py-2 z-50 transform transition-all">
-                  <div className="px-4 py-3 border-b border-slate-100 mb-1 bg-slate-50/50 rounded-t-2xl">
-                    <p className="text-sm font-semibold text-slate-800 truncate">{profile?.name}</p>
-                    <p className="text-xs text-slate-500 truncate">{profile?.ph}</p>
-                  </div>
-                  <div className="p-2 flex flex-col gap-1">
-                    <button onClick={() => { setShowProfileMenu(false); setShowProfileModal(true); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 font-medium rounded-xl transition">
-                      Update Profile
-                    </button>
-                    <button onClick={() => { setShowProfileMenu(false); setShowPasswordModal(true); }} className="w-full text-left px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50 hover:text-indigo-600 font-medium rounded-xl transition">
-                      Change Password
-                    </button>
-                    <div className="h-px bg-slate-100 my-1"></div>
-                    <button onClick={handleLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 font-medium rounded-xl transition">
-                      Sign out
-                    </button>
-                  </div>
-                </div>
-              )}
+            {/* PROFILE DISPLAY (Static) */}
+            <div className="relative flex items-center gap-2 sm:gap-3 p-1">
+              <div className="hidden sm:flex flex-col items-end pr-1">
+                <span className="font-semibold text-sm text-slate-700 leading-tight">{profile?.name}</span>
+                <span className="text-xs text-slate-500 font-medium">Administrator</span>
+              </div>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-100 text-indigo-700 font-bold text-base sm:text-lg rounded-full flex items-center justify-center shadow-inner shrink-0">
+                {profile?.name?.[0]?.toUpperCase()}
+              </div>
             </div>
 
           </div>
@@ -344,7 +351,7 @@ export default function AdminDashboard() {
         {/* SCROLLABLE CONTENT */}
         <div
           className="p-4 sm:p-8 flex-1 overflow-auto z-0"
-          onClick={() => { setShowProfileMenu(false); setShowNotifications(false); }} // Closes menus when clicking outside
+          onClick={() => setShowNotifications(false)} // Closes menu when clicking outside
         >
 
           {/* STATS */}
@@ -836,7 +843,7 @@ function ClientModal({ show, onClose, reload, editingClient, onSuccess }) {
 function MenuItem({ label, active, onClick }) {
   return (
     <li onClick={onClick}
-      className={`flex-shrink-0 px-3.5 py-2 md:px-4 md:py-3 rounded-xl cursor-pointer text-xs md:text-sm font-semibold transition-all duration-200 whitespace-nowrap
+      className={`flex-shrink-0 px-4 py-3 rounded-xl cursor-pointer text-sm font-semibold transition-all duration-200 whitespace-nowrap
       ${active
           ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/20"
           : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}>
@@ -877,7 +884,7 @@ function ProjectCard({ project, reload, onEdit, onSuccess }) {
   }
 
   return (
-    <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full group">
+    <div onClick={() => navigate(`/admin/project/${project.id}`)} className="bg-white cursor-pointer p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full group">
 
       <div className="flex justify-between items-start gap-3 mb-3 sm:mb-4">
         <h3 onClick={() => navigate(`/admin/project/${project.id}`)}
@@ -918,8 +925,8 @@ function ProjectCard({ project, reload, onEdit, onSuccess }) {
       </div>
 
       <div className="flex flex-row gap-2 pt-4 border-t border-slate-100 mt-auto">
-        <button onClick={() => onEdit(project)} className="flex-1 sm:flex-none px-4 py-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl sm:rounded-lg text-sm font-bold transition">Edit</button>
-        <button onClick={handleDelete} className="flex-1 sm:flex-none px-4 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl sm:rounded-lg text-sm font-bold transition">Delete</button>
+        <button onClick={(e) => {e.stopPropagation(); onEdit(project);}} className="flex-1 sm:flex-none px-4 py-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl sm:rounded-lg text-sm font-bold transition">Edit</button>
+        <button onClick={(e) => {e.stopPropagation(); handleDelete();}} className="flex-1 sm:flex-none px-4 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl sm:rounded-lg text-sm font-bold transition">Delete</button>
       </div>
     </div>
   )
