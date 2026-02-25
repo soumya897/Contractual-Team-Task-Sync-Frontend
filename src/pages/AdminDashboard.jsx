@@ -354,14 +354,54 @@ export default function AdminDashboard() {
           onClick={() => setShowNotifications(false)} // Closes menu when clicking outside
         >
 
-          {/* STATS */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10">
-            <Stat title="Projects" value={profile?.totalProjects || 0} color="bg-indigo-500" />
-            <Stat title="Completed" value={profile?.completedProjects || 0} color="bg-emerald-500" />
-            <Stat title="Clients" value={profile?.totalClients || 0} color="bg-amber-500" />
-            <Stat title="Developers" value={profile?.totalDevelopers || 0} color="bg-blue-500" />
-          </div>
+    {/* STATS */}
+<div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10">
 
+  {/* ALL PROJECTS */}
+  <Stat
+    title="Projects"
+    value={profile?.totalProjects || 0}
+    color="bg-indigo-500"
+    onClick={() => {
+      setActiveTab("PROJECTS")
+      setSearchQuery("")
+    }}
+  />
+
+  {/* COMPLETED PROJECTS */}
+  <Stat
+    title="Completed"
+    value={profile?.completedProjects || 0}
+    color="bg-emerald-500"
+    onClick={() => {
+      setActiveTab("COMPLETED")
+      setSearchQuery("")
+    }}
+  />
+
+  {/* CLIENTS */}
+  <Stat
+    title="Clients"
+    value={profile?.totalClients || 0}
+    color="bg-amber-500"
+    onClick={() => {
+      setActiveTab("CLIENTS")
+      setSearchQuery("")
+    }}
+  />
+
+  {/* DEVELOPERS */}
+  <Stat
+    title="Developers"
+    value={profile?.totalDevelopers || 0}
+    color="bg-blue-500"
+    onClick={() => {
+      setActiveTab("DEVS")
+      setSearchQuery("")
+    }}
+  />
+
+</div>
           {/* HEADER & ADD BUTTON */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 mb-6">
             <h2 className="text-lg font-bold text-slate-800 hidden sm:block">
@@ -852,12 +892,21 @@ function MenuItem({ label, active, onClick }) {
   )
 }
 
-function Stat({ title, value, color }) {
+function Stat({ title, value, color, onClick }) {
   return (
-    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-shadow">
+    <div
+      onClick={onClick}
+      className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-all cursor-pointer hover:-translate-y-1"
+    >
       <div className={`absolute top-0 left-0 w-1.5 h-full ${color}`}></div>
-      <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1.5 sm:mb-2 ml-2 sm:ml-2">{title}</p>
-      <h3 className="text-2xl sm:text-4xl font-black text-slate-800 ml-2 tracking-tight">{value}</h3>
+
+      <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1.5 sm:mb-2 ml-2">
+        {title}
+      </p>
+
+      <h3 className="text-2xl sm:text-4xl font-black text-slate-800 ml-2 tracking-tight">
+        {value}
+      </h3>
     </div>
   )
 }
