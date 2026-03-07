@@ -395,7 +395,7 @@ function ProjectCard({ project }) {
       {/* Description */}
       <p className="text-slate-500 text-sm mb-6 flex-1 line-clamp-2">{project.description}</p>
 
-      {/* Avatars mimicking the Admin view */}
+      {/* Avatars mimicking the Project Manager view */}
       <div className="flex flex-col gap-2 mb-6">
         <div className="flex items-center gap-3 text-sm text-slate-600">
           <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 text-xs shrink-0">C</div>

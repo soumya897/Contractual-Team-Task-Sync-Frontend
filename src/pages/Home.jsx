@@ -34,7 +34,7 @@ export default function Home() {
 
           {/* Subheading */}
           <p className="text-lg md:text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed">
-            A powerful, unified task management platform designed to seamlessly bridge the gap between Clients, Developers, and Admins.
+            A powerful, unified task management platform designed to seamlessly bridge the gap between Clients, Developers, and Project Managers.
           </p>
 
           {/* Action Buttons */}

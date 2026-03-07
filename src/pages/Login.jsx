@@ -33,7 +33,7 @@ export default function Login() {
       localStorage.setItem("role", role)
 
       // Redirect by role
-      if (role === "ADMIN") navigate("/admin")
+      if (role === "PROJECT_MANAGER") navigate("/project-manager")
       else if (role === "DEVELOPER") navigate("/developer")
       else  navigate("/user")
 

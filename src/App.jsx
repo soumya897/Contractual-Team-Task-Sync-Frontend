@@ -6,10 +6,10 @@ import Register from "./pages/Register"
 
 import UserDashboard from "./pages/UserDashboard"
 import DeveloperDashboard from "./pages/DeveloperDashboard"
-import AdminDashboard from "./pages/AdminDashboard"
+import ProjectManagerDashboard from "./pages/ProjectManagerDashboard"
 
 import ProtectedRoute from "./components/ProtectedRoute"
-import AdminProjectDetails from "./pages/ProjectDetails"
+import ProjectManagerProjectDetails from "./pages/ProjectDetails"
 
 function App() {
   return (
@@ -42,20 +42,20 @@ function App() {
       />
 
       <Route
-        path="/admin"
+        path="/project-manager"
         element={
           <ProtectedRoute>
-            <AdminDashboard />
+            <ProjectManagerDashboard />
           </ProtectedRoute> 
         }
       />
 
-      {/* 🔥 Admin Project Details Page */}
+      {/* 🔥 Project Manager Project Details Page */}
       <Route
-        path="/admin/project/:id"
+        path="/project-manager/project/:id"
         element={
-          <ProtectedRoute role="ADMIN">
-            <AdminProjectDetails />
+          <ProtectedRoute role="PROJECT_MANAGER">
+            <ProjectManagerProjectDetails />
           </ProtectedRoute>
         }
       />

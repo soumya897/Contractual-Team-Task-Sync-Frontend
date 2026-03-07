@@ -240,17 +240,6 @@ export default function DeveloperDashboard() {
 
   /* ================= UI RENDER ================= */
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="flex flex-col items-center">
-          <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-500 font-medium tracking-widest uppercase text-xs">Synchronizing...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex min-h-screen bg-gray-50 text-gray-900 font-sans selection:bg-indigo-500/30 relative overflow-hidden md:overflow-auto">
       
@@ -645,7 +634,7 @@ function EditTaskModal({ show, task, onClose, onSave }) {
   useEffect(() => {
     if (task) {
       setTitle(task.title || "")
-      setDescription(task.description || "")
+      description(task.description || "")
     }
   }, [task])
 
@@ -848,7 +837,7 @@ function ChangePasswordModal({ show, onClose, onError, onSuccess }) {
             <label className="text-xs font-bold text-gray-500 uppercase">New Password</label>
             <input
               type="password"
-              className="w-full bg-gray-50 border border-gray-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+              className="w-full bg-gray-50 border border-slate-200 p-3 rounded-lg text-gray-900 text-sm focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               placeholder="••••••••"

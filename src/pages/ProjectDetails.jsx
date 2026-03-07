@@ -19,7 +19,7 @@ export default function ProjectDetails() {
     try {
       setLoading(true)
 
-      const projRes = await api.get("/api/admin/projects")
+      const projRes = await api.get("/api/project-manager/projects")
       const current = projRes.data.find(p => p.id === Number(id))
       setProject(current)
 

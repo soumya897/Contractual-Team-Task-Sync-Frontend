@@ -134,7 +134,7 @@ export default function Register() {
             >
               <option value="CLIENT">Client</option>
               <option value="DEVELOPER">Developer</option>
-              <option value="ADMIN">Admin</option>
+              <option value="PROJECT_MANAGER">Project Manager</option>
             </select>
           </div>
 

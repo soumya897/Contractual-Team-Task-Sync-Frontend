@@ -2,17 +2,158 @@ import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import api from "../services/Api"
 
-// Added Bell Icon for Notifications
+// ================= ICONS =================
 const BellIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>;
-// Added Check Icon for Success Toast
 const CheckIcon = () => <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>;
-// Added Search Icon
 const SearchIcon = () => <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>;
-// NEW: Mobile Sidebar Icons
 const MenuIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>;
 const CloseIcon = () => <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>;
 
-export default function AdminDashboard() {
+// ================= UI COMPONENTS (Moved to top for safety) =================
+function MenuItem({ label, active, onClick }) {
+  return (
+    <li onClick={onClick}
+      className={`flex-shrink-0 px-4 py-3 rounded-xl cursor-pointer text-sm font-semibold transition-all duration-200 whitespace-nowrap
+      ${active
+          ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/20"
+          : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}>
+      {label}
+    </li>
+  )
+}
+
+function Stat({ title, value, color }) {
+  return (
+    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-shadow">
+      <div className={`absolute top-0 left-0 w-1.5 h-full ${color}`}></div>
+      <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1.5 sm:mb-2 ml-2 sm:ml-2">{title}</p>
+      <h3 className="text-2xl sm:text-4xl font-black text-slate-800 ml-2 tracking-tight">{value}</h3>
+    </div>
+  )
+}
+
+function ProjectCard({ project, reload, onEdit, onSuccess }) {
+  const navigate = useNavigate()
+  const [completion, setCompletion] = useState(0)
+
+  useEffect(() => {
+    async function loadCompletion() {
+      try { const res = await api.get(`/api/tasks/project/${project.id}/completion`); setCompletion(res.data) }
+      catch { setCompletion(0) }
+    }
+    loadCompletion()
+  }, [project.id])
+
+  async function handleDelete() {
+    if (!window.confirm("Are you sure you want to delete this project?")) return
+    try {
+      await api.delete(`/api/projects/${project.id}`)
+      onSuccess("Project deleted successfully!")
+      reload()
+    } catch (err) { console.log(err) }
+  }
+
+  return (
+    <div onClick={() => navigate(`/project-manager/project/${project.id}`)} className="bg-white cursor-pointer p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full group">
+      <div className="flex justify-between items-start gap-3 mb-3 sm:mb-4">
+        <h3 onClick={() => navigate(`/project-manager/project/${project.id}`)}
+          className="font-extrabold text-lg sm:text-xl text-slate-800 cursor-pointer group-hover:text-indigo-600 transition-colors leading-tight min-w-0">
+          <span className="truncate block">{project.title}</span>
+        </h3>
+        <span className={`flex-shrink-0 px-2.5 py-1 text-[9px] sm:text-[10px] uppercase rounded-full font-extrabold tracking-wider border
+            ${project.status === "ONGOING" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-emerald-50 text-emerald-600 border-emerald-200"}`}>
+          {project.status}
+        </span>
+      </div>
+      <p className="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6 line-clamp-2 leading-relaxed flex-1">
+        {project.description}
+      </p>
+      <div className="bg-slate-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 border border-slate-100 space-y-2.5 sm:space-y-3">
+        <div className="flex items-center text-xs sm:text-sm min-w-0">
+          <span className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 mr-2 sm:mr-3 text-[10px] sm:text-xs font-bold">C</span>
+          <span className="font-semibold text-slate-700 truncate">{project.client?.name || "No Client Assigned"}</span>
+        </div>
+        <div className="flex items-center text-xs sm:text-sm min-w-0">
+          <span className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 mr-2 sm:mr-3 text-[10px] sm:text-xs font-bold">D</span>
+          <span className="text-slate-600 truncate">
+            {project.developers?.length > 0 ? project.developers.map(d => d.name).join(", ") : "No Developers Assigned"}
+          </span>
+        </div>
+      </div>
+      <div className="mb-5 sm:mb-6">
+        <div className="flex justify-between text-xs sm:text-sm mb-1.5 sm:mb-2">
+          <span className="text-slate-500 font-bold text-[10px] sm:text-xs uppercase tracking-wider">Progress</span>
+          <span className="text-indigo-600 font-extrabold">{completion}%</span>
+        </div>
+        <div className="w-full bg-slate-100 rounded-full h-1.5 sm:h-2">
+          <div className="bg-indigo-600 h-1.5 sm:h-2 rounded-full transition-all duration-700 ease-out" style={{ width: `${completion}%` }} />
+        </div>
+      </div>
+      <div className="flex flex-row gap-2 pt-4 border-t border-slate-100 mt-auto">
+        <button onClick={(e) => {e.stopPropagation(); onEdit(project);}} className="flex-1 sm:flex-none px-4 py-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl sm:rounded-lg text-sm font-bold transition">Edit</button>
+        <button onClick={(e) => {e.stopPropagation(); handleDelete();}} className="flex-1 sm:flex-none px-4 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl sm:rounded-lg text-sm font-bold transition">Delete</button>
+      </div>
+    </div>
+  )
+}
+
+function DeveloperCard({ developer, reload, onEdit, onSuccess }) {
+  async function handleDelete() {
+    if (!window.confirm("Delete developer?")) return
+    try {
+      await api.delete(`/api/project-manager/developers/${developer.id}`)
+      onSuccess("Developer removed successfully!")
+      reload()
+    } catch (err) { console.log(err) }
+  }
+
+  return (
+    <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-center">
+      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-md text-white font-bold text-xl sm:text-2xl">
+        {developer.name[0].toUpperCase()}
+      </div>
+      <h3 className="font-bold text-base sm:text-lg text-slate-800 mb-0.5 sm:mb-1 truncate">{developer.name}</h3>
+      <p className="text-xs sm:text-sm text-slate-500 font-medium truncate">{developer.email}</p>
+      <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1">{developer.ph}</p>
+
+      <div className="flex flex-row justify-center gap-2 mt-5 sm:mt-6 pt-4 border-t border-slate-100">
+        <button onClick={() => onEdit(developer)} className="flex-1 sm:flex-none text-indigo-600 text-xs sm:text-sm font-bold transition px-3 py-2 sm:py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 sm:bg-transparent">Edit</button>
+        <button onClick={handleDelete} className="flex-1 sm:flex-none text-red-500 text-xs sm:text-sm font-bold transition px-3 py-2 sm:py-1.5 rounded-lg bg-red-50 hover:bg-red-100 sm:bg-transparent">Remove</button>
+      </div>
+    </div>
+  )
+}
+
+function ClientCard({ client, reload, onEdit, onSuccess }) {
+  async function handleDelete() {
+    if (!window.confirm("Delete client?")) return
+    try {
+      await api.delete(`/api/project-manager/clients/${client.id}`)
+      onSuccess("Client removed successfully!")
+      reload()
+    } catch (err) { console.log(err) }
+  }
+
+  return (
+    <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-center">
+      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-md text-white font-bold text-xl sm:text-2xl">
+        {client.name[0].toUpperCase()}
+      </div>
+      <h3 className="font-bold text-base sm:text-lg text-slate-800 mb-0.5 sm:mb-1 truncate">{client.name}</h3>
+      <p className="text-xs sm:text-sm text-slate-500 font-medium truncate">{client.email}</p>
+      <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1">{client.ph}</p>
+
+      <div className="flex flex-row justify-center gap-2 mt-5 sm:mt-6 pt-4 border-t border-slate-100">
+        <button onClick={() => onEdit(client)} className="flex-1 sm:flex-none text-indigo-600 text-xs sm:text-sm font-bold transition px-3 py-2 sm:py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 sm:bg-transparent">Edit</button>
+        <button onClick={handleDelete} className="flex-1 sm:flex-none text-red-500 text-xs sm:text-sm font-bold transition px-3 py-2 sm:py-1.5 rounded-lg bg-red-50 hover:bg-red-100 sm:bg-transparent">Remove</button>
+      </div>
+    </div>
+  )
+}
+
+
+// ================= MAIN DASHBOARD COMPONENT =================
+export default function ProjectManagerDashboard() {
 
   const [activeTab, setActiveTab] = useState("PROJECTS")
   const [projects, setProjects] = useState([])
@@ -31,19 +172,13 @@ export default function AdminDashboard() {
   const [showProfileModal, setShowProfileModal] = useState(false)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
 
-  // Notification States
   const [showNotifications, setShowNotifications] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
 
-  // Toast States
   const [successMessage, setSuccessMessage] = useState("")
   const [errorMessage, setErrorMessage] = useState("")
-
-  // Search State
   const [searchQuery, setSearchQuery] = useState("")
-  
-  // NEW: Mobile Menu State
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   const navigate = useNavigate()
@@ -51,32 +186,29 @@ export default function AdminDashboard() {
   /* ================= LOADERS ================= */
 
   async function loadProfile() {
-    const res = await api.get("/api/admin/profile")
+    const res = await api.get("/api/project-manager/profile")
     setProfile(res.data)
   }
 
-  // --- Search Integration ---
   async function loadProjects(query = "") {
-    const url = query ? `/api/admin/projects?search=${encodeURIComponent(query)}` : "/api/admin/projects"
+    const url = query ? `/api/project-manager/projects?search=${encodeURIComponent(query)}` : "/api/project-manager/projects"
     const res = await api.get(url)
     setProjects(res.data)
   }
 
   async function loadClients(query = "") {
-    const url = query ? `/api/admin/clients?search=${encodeURIComponent(query)}` : "/api/admin/clients"
+    const url = query ? `/api/project-manager/clients?search=${encodeURIComponent(query)}` : "/api/project-manager/clients"
     const res = await api.get(url)
     setClients(res.data)
   }
 
   async function loadDevelopers(query = "") {
-    const url = query ? `/api/admin/developers?search=${encodeURIComponent(query)}` : "/api/admin/developers"
+    const url = query ? `/api/project-manager/developers?search=${encodeURIComponent(query)}` : "/api/project-manager/developers"
     const res = await api.get(url)
     setDevelopers(res.data)
   }
 
-  // Effect to handle dynamic search as the user types
   useEffect(() => {
-    // We only load the data relevant to the active tab to save bandwidth
     if (activeTab === "PROJECTS" || activeTab === "ONGOING" || activeTab === "COMPLETED") {
       loadProjects(searchQuery)
     } else if (activeTab === "CLIENTS") {
@@ -86,12 +218,10 @@ export default function AdminDashboard() {
     }
   }, [searchQuery, activeTab])
 
-
-  // --- Notification Fetcher ---
   async function fetchNotifications() {
     try {
-      const notifRes = await api.get("/api/admin/notifications")
-      const countRes = await api.get("/api/admin/notifications/unread-count")
+      const notifRes = await api.get("/api/project-manager/notifications")
+      const countRes = await api.get("/api/project-manager/notifications/unread-count")
       setNotifications(notifRes.data || [])
       setUnreadCount(countRes.data || 0)
     } catch (err) { console.log("Notification Fetch Error:", err) }
@@ -111,12 +241,10 @@ export default function AdminDashboard() {
     }
     load()
 
-    // --- Background Notification Polling (Every 10 seconds) ---
     const notificationInterval = setInterval(() => {
       fetchNotifications()
     }, 100000); 
 
-    // Cleanup interval on unmount
     return () => clearInterval(notificationInterval);
   }, [])
 
@@ -147,7 +275,7 @@ export default function AdminDashboard() {
       const unreadNotifs = notifications.filter(n => !n.read);
       for (const notif of unreadNotifs) {
         try {
-          await api.put(`/api/admin/notifications/${notif.id}/read`);
+          await api.put(`/api/project-manager/notifications/${notif.id}/read`);
         } catch (err) {
           console.log("Error marking notification as read:", err);
         }
@@ -215,9 +343,8 @@ export default function AdminDashboard() {
             <div className="w-8 h-8 bg-indigo-500 rounded-lg shadow-lg flex items-center justify-center shrink-0">
               <span className="text-white font-bold text-xl">S</span>
             </div>
-            <h2 className="text-xl font-black text-white tracking-tight">Sync<span className="text-indigo-400">Admin</span></h2>
+            <h2 className="text-xl font-black text-white tracking-tight">Sync<span className="text-indigo-400">PM</span></h2>
           </div>
-          {/* Mobile Close Button */}
           <button className="md:hidden text-slate-400 hover:text-white focus:outline-none" onClick={() => setIsMobileMenuOpen(false)}>
             <CloseIcon />
           </button>
@@ -233,7 +360,6 @@ export default function AdminDashboard() {
           <MenuItem label="All Clients" active={activeTab === "CLIENTS"} onClick={() => {setActiveTab("CLIENTS"); setSearchQuery(""); setIsMobileMenuOpen(false);}} />
           <MenuItem label="All Developers" active={activeTab === "DEVS"} onClick={() => {setActiveTab("DEVS"); setSearchQuery(""); setIsMobileMenuOpen(false);}} />
 
-          {/* Account Actions moved from navbar dropdown */}
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-2 mt-auto pt-6 border-t border-slate-800 shrink-0">Account</div>
           <MenuItem label="Update Profile" active={false} onClick={() => {setShowProfileModal(true); setIsMobileMenuOpen(false);}} />
           <MenuItem label="Change Password" active={false} onClick={() => {setShowPasswordModal(true); setIsMobileMenuOpen(false);}} />
@@ -251,7 +377,6 @@ export default function AdminDashboard() {
         <div className="h-16 sm:h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex justify-between items-center px-4 sm:px-8 shadow-sm shrink-0 z-10 sticky top-0 gap-4">
           
           <div className="flex items-center gap-3 sm:gap-0 min-w-0 pr-4">
-            {/* Hamburger Button for Mobile */}
             <button className="md:hidden text-slate-500 hover:text-slate-800 focus:outline-none shrink-0" onClick={() => setIsMobileMenuOpen(true)}>
               <MenuIcon />
             </button>
@@ -262,7 +387,7 @@ export default function AdminDashboard() {
                     activeTab === "COMPLETED" ? "Completed Projects" :
                       activeTab === "CLIENTS" ? "Clients" : "Developers"}
               </h1>
-              <p className="hidden sm:block text-sm text-slate-500 truncate">Welcome back, {profile?.name?.split(' ')[0] || 'Admin'}</p>
+              <p className="hidden sm:block text-sm text-slate-500 truncate">Welcome back, {profile?.name?.split(' ')[0] || 'Project Manager'}</p>
             </div>
           </div>
 
@@ -318,11 +443,11 @@ export default function AdminDashboard() {
               )}
             </div>
 
-            {/* PROFILE DISPLAY (Static) */}
+            {/* PROFILE DISPLAY */}
             <div className="relative flex items-center gap-2 sm:gap-3 p-1">
               <div className="hidden sm:flex flex-col items-end pr-1">
                 <span className="font-semibold text-sm text-slate-700 leading-tight">{profile?.name}</span>
-                <span className="text-xs text-slate-500 font-medium">Administrator</span>
+                <span className="text-xs text-slate-500 font-medium">Project Manager</span>
               </div>
               <div className="w-8 h-8 sm:w-10 sm:h-10 bg-indigo-100 text-indigo-700 font-bold text-base sm:text-lg rounded-full flex items-center justify-center shadow-inner shrink-0">
                 {profile?.name?.[0]?.toUpperCase()}
@@ -332,7 +457,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* MOBILE SEARCH BAR (visible only on small screens) */}
+        {/* MOBILE SEARCH BAR */}
         <div className="sm:hidden px-4 py-3 bg-white border-b border-slate-200 shrink-0">
           <div className="relative w-full">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -351,9 +476,8 @@ export default function AdminDashboard() {
         {/* SCROLLABLE CONTENT */}
         <div
           className="p-4 sm:p-8 flex-1 overflow-auto z-0"
-          onClick={() => setShowNotifications(false)} // Closes menu when clicking outside
+          onClick={() => setShowNotifications(false)}
         >
-
           {/* STATS */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-10">
             <Stat title="Projects" value={profile?.totalProjects || 0} color="bg-indigo-500" />
@@ -394,7 +518,7 @@ export default function AdminDashboard() {
           {["PROJECTS", "ONGOING", "COMPLETED"].includes(activeTab) && (
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5 sm:gap-6 pb-8">
               {getFilteredProjects().map(p => (
-                <ProjectCard key={p.id} project={p} reload={() => loadProjects(searchQuery)} onEdit={(proj) => { setEditingProject(proj); setShowModal(true); }} onSuccess={showSuccessToast} />
+                <ProjectCard key={p.id} project={p} reload={() => { loadProjects(searchQuery); loadProfile(); }} onEdit={(proj) => { setEditingProject(proj); setShowModal(true); }} onSuccess={showSuccessToast} />
               ))}
               {getFilteredProjects().length === 0 && (
                 <div className="col-span-full text-center py-12 sm:py-16 text-slate-500 bg-white rounded-2xl border-2 border-slate-200 border-dashed px-4">
@@ -410,7 +534,7 @@ export default function AdminDashboard() {
 
           {activeTab === "CLIENTS" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 pb-8">
-              {clients.map(c => <ClientCard key={c.id} client={c} reload={() => loadClients(searchQuery)} onEdit={(client) => { setEditingClient(client); setShowClientModal(true); }} onSuccess={showSuccessToast} />)}
+              {clients.map(c => <ClientCard key={c.id} client={c} reload={() => { loadClients(searchQuery); loadProfile(); }} onEdit={(client) => { setEditingClient(client); setShowClientModal(true); }} onSuccess={showSuccessToast} />)}
               {clients.length === 0 && (
                 <div className="col-span-full text-center py-12 sm:py-16 text-slate-500 bg-white rounded-2xl border-2 border-slate-200 border-dashed px-4">
                   <p className="font-medium text-base sm:text-lg text-slate-700">No clients found</p>
@@ -421,7 +545,7 @@ export default function AdminDashboard() {
 
           {activeTab === "DEVS" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 pb-8">
-              {developers.map(d => <DeveloperCard key={d.id} developer={d} reload={() => loadDevelopers(searchQuery)} onEdit={(dev) => { setEditingDeveloper(dev); setShowDevModal(true); }} onSuccess={showSuccessToast} />)}
+              {developers.map(d => <DeveloperCard key={d.id} developer={d} reload={() => { loadDevelopers(searchQuery); loadProfile(); }} onEdit={(dev) => { setEditingDeveloper(dev); setShowDevModal(true); }} onSuccess={showSuccessToast} />)}
                {developers.length === 0 && (
                 <div className="col-span-full text-center py-12 sm:py-16 text-slate-500 bg-white rounded-2xl border-2 border-slate-200 border-dashed px-4">
                   <p className="font-medium text-base sm:text-lg text-slate-700">No developers found</p>
@@ -434,9 +558,9 @@ export default function AdminDashboard() {
       </div>
 
       {/* MODALS */}
-      <ProjectModal show={showModal} onClose={() => setShowModal(false)} reload={() => loadProjects(searchQuery)} clients={clients} developers={developers} editingProject={editingProject} onSuccess={showSuccessToast} />
-      <DeveloperModal show={showDevModal} onClose={() => setShowDevModal(false)} reload={() => loadDevelopers(searchQuery)} editingDeveloper={editingDeveloper} onSuccess={showSuccessToast} />
-      <ClientModal show={showClientModal} onClose={() => setShowClientModal(false)} reload={() => loadClients(searchQuery)} editingClient={editingClient} onSuccess={showSuccessToast} />
+      <ProjectModal show={showModal} onClose={() => setShowModal(false)} reload={() => { loadProjects(searchQuery); loadProfile(); }} clients={clients} developers={developers} editingProject={editingProject} onSuccess={showSuccessToast} />
+      <DeveloperModal show={showDevModal} onClose={() => setShowDevModal(false)} reload={() => { loadDevelopers(searchQuery); loadProfile(); }} editingDeveloper={editingDeveloper} onSuccess={showSuccessToast} />
+      <ClientModal show={showClientModal} onClose={() => setShowClientModal(false)} reload={() => { loadClients(searchQuery); loadProfile(); }} editingClient={editingClient} onSuccess={showSuccessToast} />
 
       <ProfileModal
         show={showProfileModal}
@@ -462,10 +586,7 @@ export default function AdminDashboard() {
 /* ================= MODALS ================= */
 
 function ProfileModal({ show, onClose, profile, reload, onSuccess, onError }) {
-  const [form, setForm] = useState({
-    name: "",
-    phone: ""
-  })
+  const [form, setForm] = useState({ name: "", phone: "" })
 
   useEffect(() => {
     if (profile) {
@@ -487,11 +608,7 @@ function ProfileModal({ show, onClose, profile, reload, onSuccess, onError }) {
     e.preventDefault()
     try {
       await api.put("/api/profile/update", {
-        id: profile?.id,
-        email: profile?.email,
-        name: form.name,
-        phone: form.phone,
-        ph: form.phone
+        id: profile?.id, email: profile?.email, name: form.name, phone: form.phone, ph: form.phone
       })
       onSuccess("Profile updated successfully!")
       reload()
@@ -512,27 +629,17 @@ function ProfileModal({ show, onClose, profile, reload, onSuccess, onError }) {
             <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Full Name</label>
             <input
               name="name" value={form.name} onChange={handleChange} placeholder="Name"
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base"
-              required
-            />
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
           </div>
           <div>
             <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Contact Number</label>
             <input
               name="phone" value={form.phone} onChange={handleChange} placeholder="Phone"
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base"
-              required
-            />
+              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
           </div>
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6 sm:mt-8 pt-2">
-            <button type="button" onClick={onClose}
-              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">
-              Cancel
-            </button>
-            <button type="submit"
-              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 transition">
-              Save Changes
-            </button>
+            <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">Cancel</button>
+            <button type="submit" className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 transition">Save Changes</button>
           </div>
         </form>
       </div>
@@ -545,10 +652,7 @@ function ChangePasswordModal({ show, onClose, onSuccess, onError }) {
   const [newPassword, setNewPassword] = useState("")
 
   useEffect(() => {
-    if (show) {
-      setOldPassword("")
-      setNewPassword("")
-    }
+    if (show) { setOldPassword(""); setNewPassword(""); }
   }, [show])
 
   if (!show) return null
@@ -556,10 +660,7 @@ function ChangePasswordModal({ show, onClose, onSuccess, onError }) {
   async function handleSubmit(e) {
     e.preventDefault()
     try {
-      const res = await api.put("/api/profile/change-password", { 
-        oldPassword: oldPassword,
-        newPassword: newPassword 
-      })
+      const res = await api.put("/api/profile/change-password", { oldPassword, newPassword })
       onSuccess(res.data || "Password changed successfully!")
       onClose()
     } catch (err) {
@@ -576,31 +677,15 @@ function ChangePasswordModal({ show, onClose, onSuccess, onError }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Current Password</label>
-            <input
-              type="password"
-              value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="••••••••"
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base"
-              required
-            />
+            <input type="password" value={oldPassword} onChange={e => setOldPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
           </div>
           <div>
             <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">New Password</label>
-            <input
-              type="password"
-              value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••"
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base"
-              required
-            />
+            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="••••••••" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
           </div>
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6 sm:mt-8 pt-2">
-            <button type="button" onClick={onClose}
-              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">
-              Cancel
-            </button>
-            <button type="submit"
-              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 transition">
-              Confirm
-            </button>
+            <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">Cancel</button>
+            <button type="submit" className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 transition">Confirm</button>
           </div>
         </form>
       </div>
@@ -622,10 +707,7 @@ function ProjectModal({ show, onClose, reload, clients, developers, editingProje
 
   if (!show) return null
 
-  function handleChange(e) {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
+  function handleChange(e) { const { name, value } = e.target; setForm(prev => ({ ...prev, [name]: value })) }
 
   function toggleDeveloper(id) {
     setForm(prev => ({
@@ -637,80 +719,56 @@ function ProjectModal({ show, onClose, reload, clients, developers, editingProje
   async function handleSubmit(e) {
     e.preventDefault()
     try {
-      if (editingProject) {
-        await api.put(`/api/projects/${editingProject.id}`, form)
-        onSuccess("Project updated successfully!")
-      } else {
-        await api.post("/api/projects", form)
-        onSuccess("Project created successfully!")
-      }
-      reload()
-      onClose()
+      if (editingProject) { await api.put(`/api/projects/${editingProject.id}`, form); onSuccess("Project updated successfully!") } 
+      else { await api.post("/api/projects", form); onSuccess("Project created successfully!") }
+      reload(); onClose();
     } catch (err) { console.log(err) }
   }
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
       <div className="bg-white w-full max-w-lg p-6 sm:p-8 rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl sm:text-2xl font-bold mb-5 sm:mb-6 text-slate-800">
-          {editingProject ? "Edit Project" : "Create Project"}
-        </h2>
+        <h2 className="text-xl sm:text-2xl font-bold mb-5 sm:mb-6 text-slate-800">{editingProject ? "Edit Project" : "Create Project"}</h2>
         <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-
           <div>
             <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Project Title</label>
-            <input name="title" value={form.title} onChange={handleChange} placeholder="e.g. E-Commerce Redesign"
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
+            <input name="title" value={form.title} onChange={handleChange} placeholder="e.g. E-Commerce Redesign" className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all text-sm sm:text-base" required />
           </div>
-
           <div>
             <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Description</label>
-            <textarea name="description" value={form.description} onChange={handleChange} rows="3" placeholder="Brief details about the project..."
-              className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all resize-none text-sm sm:text-base" required />
+            <textarea name="description" value={form.description} onChange={handleChange} rows="3" placeholder="Brief details about the project..." className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all resize-none text-sm sm:text-base" required />
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
             <div>
               <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Status</label>
-              <select name="status" value={form.status} onChange={handleChange}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all appearance-none cursor-pointer text-sm sm:text-base">
+              <select name="status" value={form.status} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all appearance-none cursor-pointer text-sm sm:text-base">
                 <option value="ONGOING">Ongoing</option>
                 <option value="COMPLETED">Completed</option>
               </select>
             </div>
             <div>
               <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Client</label>
-              <select name="clientId" value={form.clientId} onChange={handleChange}
-                className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all appearance-none cursor-pointer text-sm sm:text-base" required>
+              <select name="clientId" value={form.clientId} onChange={handleChange} className="w-full bg-slate-50 border border-slate-200 text-slate-900 p-3 sm:p-3.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all appearance-none cursor-pointer text-sm sm:text-base" required>
                 <option value="">Select a Client</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           </div>
-
           <div>
             <label className="block text-[10px] sm:text-xs font-bold text-slate-500 mb-1.5 sm:mb-2 uppercase tracking-wider">Assign Developers</label>
             <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-slate-50/50 space-y-1">
               {developers.length === 0 && <p className="text-sm text-slate-500 italic p-3">No developers available.</p>}
               {developers.map(d => (
                 <label key={d.id} className="flex items-center text-sm cursor-pointer hover:bg-white p-3 rounded-lg border border-transparent hover:border-slate-200 hover:shadow-sm transition-all">
-                  <input type="checkbox" checked={form.developerIds.includes(d.id)} onChange={() => toggleDeveloper(d.id)}
-                    className="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
+                  <input type="checkbox" checked={form.developerIds.includes(d.id)} onChange={() => toggleDeveloper(d.id)} className="mr-3 h-4 w-4 sm:h-5 sm:w-5 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500" />
                   <span className="font-medium sm:font-semibold text-slate-700">{d.name}</span>
                 </label>
               ))}
             </div>
           </div>
-
           <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-slate-100">
-            <button type="button" onClick={onClose}
-              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">
-              Cancel
-            </button>
-            <button type="submit"
-              className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 transition">
-              {editingProject ? "Update Project" : "Create Project"}
-            </button>
+            <button type="button" onClick={onClose} className="w-full sm:w-auto px-5 py-3 sm:py-2.5 text-slate-600 font-medium rounded-xl hover:bg-slate-100 transition">Cancel</button>
+            <button type="submit" className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 transition">{editingProject ? "Update Project" : "Create Project"}</button>
           </div>
         </form>
       </div>
@@ -733,15 +791,9 @@ function DeveloperModal({ show, onClose, reload, editingDeveloper, onSuccess }) 
   async function handleSubmit(e) {
     e.preventDefault()
     try {
-      if (editingDeveloper) {
-        await api.put(`/api/admin/developers/${editingDeveloper.id}`, form)
-        onSuccess("Developer updated successfully!")
-      } else {
-        await api.post("/api/admin/developers", form)
-        onSuccess("Developer created successfully!")
-      }
-      reload()
-      onClose()
+      if (editingDeveloper) { await api.put(`/api/project-manager/developers/${editingDeveloper.id}`, form); onSuccess("Developer updated successfully!") } 
+      else { await api.post("/api/project-manager/developers", form); onSuccess("Developer created successfully!") }
+      reload(); onClose();
     } catch (err) { console.log(err) }
   }
 
@@ -793,15 +845,9 @@ function ClientModal({ show, onClose, reload, editingClient, onSuccess }) {
   async function handleSubmit(e) {
     e.preventDefault()
     try {
-      if (editingClient) {
-        await api.put(`/api/admin/clients/${editingClient.id}`, form)
-        onSuccess("Client updated successfully!")
-      } else {
-        await api.post("/api/admin/clients", form)
-        onSuccess("Client created successfully!")
-      }
-      reload()
-      onClose()
+      if (editingClient) { await api.put(`/api/project-manager/clients/${editingClient.id}`, form); onSuccess("Client updated successfully!") } 
+      else { await api.post("/api/project-manager/clients", form); onSuccess("Client created successfully!") }
+      reload(); onClose();
     } catch (err) { console.log(err) }
   }
 
@@ -833,154 +879,6 @@ function ClientModal({ show, onClose, reload, editingClient, onSuccess }) {
             <button type="submit" className="w-full sm:w-auto px-5 py-3 sm:py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-200 transition">Save Client</button>
           </div>
         </form>
-      </div>
-    </div>
-  )
-}
-
-/* ================= UI COMPONENTS ================= */
-
-function MenuItem({ label, active, onClick }) {
-  return (
-    <li onClick={onClick}
-      className={`flex-shrink-0 px-4 py-3 rounded-xl cursor-pointer text-sm font-semibold transition-all duration-200 whitespace-nowrap
-      ${active
-          ? "bg-indigo-600 text-white shadow-md shadow-indigo-900/20"
-          : "text-slate-400 hover:bg-slate-800 hover:text-white"}`}>
-      {label}
-    </li>
-  )
-}
-
-function Stat({ title, value, color }) {
-  return (
-    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden group hover:shadow-md transition-shadow">
-      <div className={`absolute top-0 left-0 w-1.5 h-full ${color}`}></div>
-      <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-widest mb-1.5 sm:mb-2 ml-2 sm:ml-2">{title}</p>
-      <h3 className="text-2xl sm:text-4xl font-black text-slate-800 ml-2 tracking-tight">{value}</h3>
-    </div>
-  )
-}
-
-function ProjectCard({ project, reload, onEdit, onSuccess }) {
-  const navigate = useNavigate()
-  const [completion, setCompletion] = useState(0)
-
-  useEffect(() => {
-    async function loadCompletion() {
-      try { const res = await api.get(`/api/tasks/project/${project.id}/completion`); setCompletion(res.data) }
-      catch { setCompletion(0) }
-    }
-    loadCompletion()
-  }, [project.id])
-
-  async function handleDelete() {
-    if (!window.confirm("Are you sure you want to delete this project?")) return
-    try {
-      await api.delete(`/api/projects/${project.id}`)
-      onSuccess("Project deleted successfully!")
-      reload()
-    } catch (err) { console.log(err) }
-  }
-
-  return (
-    <div onClick={() => navigate(`/admin/project/${project.id}`)} className="bg-white cursor-pointer p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col h-full group">
-
-      <div className="flex justify-between items-start gap-3 mb-3 sm:mb-4">
-        <h3 onClick={() => navigate(`/admin/project/${project.id}`)}
-          className="font-extrabold text-lg sm:text-xl text-slate-800 cursor-pointer group-hover:text-indigo-600 transition-colors leading-tight min-w-0">
-          <span className="truncate block">{project.title}</span>
-        </h3>
-        <span className={`flex-shrink-0 px-2.5 py-1 text-[9px] sm:text-[10px] uppercase rounded-full font-extrabold tracking-wider border
-            ${project.status === "ONGOING" ? "bg-amber-50 text-amber-600 border-amber-200" : "bg-emerald-50 text-emerald-600 border-emerald-200"}`}>
-          {project.status}
-        </span>
-      </div>
-
-      <p className="text-slate-500 text-xs sm:text-sm mb-4 sm:mb-6 line-clamp-2 leading-relaxed flex-1">
-        {project.description}
-      </p>
-
-      <div className="bg-slate-50 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 border border-slate-100 space-y-2.5 sm:space-y-3">
-        <div className="flex items-center text-xs sm:text-sm min-w-0">
-          <span className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 mr-2 sm:mr-3 text-[10px] sm:text-xs font-bold">C</span>
-          <span className="font-semibold text-slate-700 truncate">{project.client?.name || "No Client Assigned"}</span>
-        </div>
-        <div className="flex items-center text-xs sm:text-sm min-w-0">
-          <span className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-500 mr-2 sm:mr-3 text-[10px] sm:text-xs font-bold">D</span>
-          <span className="text-slate-600 truncate">
-            {project.developers?.length > 0 ? project.developers.map(d => d.name).join(", ") : "No Developers Assigned"}
-          </span>
-        </div>
-      </div>
-
-      <div className="mb-5 sm:mb-6">
-        <div className="flex justify-between text-xs sm:text-sm mb-1.5 sm:mb-2">
-          <span className="text-slate-500 font-bold text-[10px] sm:text-xs uppercase tracking-wider">Progress</span>
-          <span className="text-indigo-600 font-extrabold">{completion}%</span>
-        </div>
-        <div className="w-full bg-slate-100 rounded-full h-1.5 sm:h-2">
-          <div className="bg-indigo-600 h-1.5 sm:h-2 rounded-full transition-all duration-700 ease-out" style={{ width: `${completion}%` }} />
-        </div>
-      </div>
-
-      <div className="flex flex-row gap-2 pt-4 border-t border-slate-100 mt-auto">
-        <button onClick={(e) => {e.stopPropagation(); onEdit(project);}} className="flex-1 sm:flex-none px-4 py-2.5 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl sm:rounded-lg text-sm font-bold transition">Edit</button>
-        <button onClick={(e) => {e.stopPropagation(); handleDelete();}} className="flex-1 sm:flex-none px-4 py-2.5 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl sm:rounded-lg text-sm font-bold transition">Delete</button>
-      </div>
-    </div>
-  )
-}
-
-function DeveloperCard({ developer, reload, onEdit, onSuccess }) {
-  async function handleDelete() {
-    if (!window.confirm("Delete developer?")) return
-    try {
-      await api.delete(`/api/admin/developers/${developer.id}`)
-      onSuccess("Developer removed successfully!")
-      reload()
-    } catch (err) { console.log(err) }
-  }
-
-  return (
-    <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-center">
-      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-md text-white font-bold text-xl sm:text-2xl">
-        {developer.name[0].toUpperCase()}
-      </div>
-      <h3 className="font-bold text-base sm:text-lg text-slate-800 mb-0.5 sm:mb-1 truncate">{developer.name}</h3>
-      <p className="text-xs sm:text-sm text-slate-500 font-medium truncate">{developer.email}</p>
-      <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1">{developer.ph}</p>
-
-      <div className="flex flex-row justify-center gap-2 mt-5 sm:mt-6 pt-4 border-t border-slate-100">
-        <button onClick={() => onEdit(developer)} className="flex-1 sm:flex-none text-indigo-600 text-xs sm:text-sm font-bold transition px-3 py-2 sm:py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 sm:bg-transparent">Edit</button>
-        <button onClick={handleDelete} className="flex-1 sm:flex-none text-red-500 text-xs sm:text-sm font-bold transition px-3 py-2 sm:py-1.5 rounded-lg bg-red-50 hover:bg-red-100 sm:bg-transparent">Remove</button>
-      </div>
-    </div>
-  )
-}
-
-function ClientCard({ client, reload, onEdit, onSuccess }) {
-  async function handleDelete() {
-    if (!window.confirm("Delete client?")) return
-    try {
-      await api.delete(`/api/admin/clients/${client.id}`)
-      onSuccess("Client removed successfully!")
-      reload()
-    } catch (err) { console.log(err) }
-  }
-
-  return (
-    <div className="bg-white p-5 sm:p-6 rounded-2xl shadow-sm border border-slate-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1 text-center">
-      <div className="w-14 h-14 sm:w-16 sm:h-16 bg-gradient-to-tr from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-md text-white font-bold text-xl sm:text-2xl">
-        {client.name[0].toUpperCase()}
-      </div>
-      <h3 className="font-bold text-base sm:text-lg text-slate-800 mb-0.5 sm:mb-1 truncate">{client.name}</h3>
-      <p className="text-xs sm:text-sm text-slate-500 font-medium truncate">{client.email}</p>
-      <p className="text-xs sm:text-sm text-slate-400 mt-0.5 sm:mt-1">{client.ph}</p>
-
-      <div className="flex flex-row justify-center gap-2 mt-5 sm:mt-6 pt-4 border-t border-slate-100">
-        <button onClick={() => onEdit(client)} className="flex-1 sm:flex-none text-indigo-600 text-xs sm:text-sm font-bold transition px-3 py-2 sm:py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 sm:bg-transparent">Edit</button>
-        <button onClick={handleDelete} className="flex-1 sm:flex-none text-red-500 text-xs sm:text-sm font-bold transition px-3 py-2 sm:py-1.5 rounded-lg bg-red-50 hover:bg-red-100 sm:bg-transparent">Remove</button>
       </div>
     </div>
   )
